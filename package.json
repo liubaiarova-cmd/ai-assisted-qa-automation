@@ -1,0 +1,29 @@
+{
+  "name": "ai-assisted-qa-automation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liubaiarova-cmd/ai-assisted-qa-automation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/liubaiarova-cmd/ai-assisted-qa-automation/issues"
+  },
+  "homepage": "https://github.com/liubaiarova-cmd/ai-assisted-qa-automation#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.6.2"
+  }
+}
