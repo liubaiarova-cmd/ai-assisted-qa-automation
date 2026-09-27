@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/liubaiarova-cmd/ai-assisted-qa-automation#readme",
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.2"
   }
 }
