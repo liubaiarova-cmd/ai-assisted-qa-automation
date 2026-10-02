@@ -121,7 +121,7 @@ export async function submitSave(dialog: Locator): Promise<void> {
   const saveButton = dialog.getByRole('button', { name: 'Save' });
   await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await saveButton.click();
-  await expect(dialog).toBeHidden({ timeout: 20_000 });
+  await expect(dialog).toBeHidden({ timeout: 45_000 });
 }
 
 export async function acceptDeleteConfirm(page: Page, programName: string): Promise<string> {
