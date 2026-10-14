@@ -1,6 +1,8 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/cleanup.fixture';
+import type { Locator, Page } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
+import { clickCreate, submitCreate } from './support/didaxis-programs';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
@@ -70,13 +72,6 @@ async function expectProgramInList(page: Page, programName: string): Promise<voi
   await expect(row).toBeVisible();
 }
 
-async function submitCreate(dialog: Locator): Promise<void> {
-  const createButton = dialog.getByRole('button', { name: 'Create' });
-  await expect(createButton).toBeEnabled({ timeout: 10_000 });
-  await createButton.click();
-  await expect(dialog).toBeHidden({ timeout: 20_000 });
-}
-
 async function dismissProgramForm(dialog: Locator, page: Page): Promise<void> {
   const cancel = dialog.getByRole('button', { name: 'Cancel' });
   await cancel.click();
@@ -94,7 +89,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Positive flows', () => {
-  test('TC-001 — program creation form displays required fields', async ({ page }) => {
+  test('TC-001 — program creation form displays required fields', async ({ page, trackProgram }) => {
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
 
@@ -105,18 +100,18 @@ test.describe('Positive flows', () => {
     await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
   });
 
-  test('TC-002 — new program appears in the list after successful creation', async ({ page }) => {
+  test('TC-002 — new program appears in the list after successful creation', async ({ page, trackProgram }) => {
     const programName = `Web Development 2026 ${Date.now()}`;
     const description = 'Full-stack web development program';
 
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, description);
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     await expectProgramInList(page, programName);
   });
 
-  test('TC-003 — program can be created with a longer description', async ({ page }) => {
+  test('TC-003 — program can be created with a longer description', async ({ page, trackProgram }) => {
     const programName = `Data Science Fundamentals ${Date.now()}`;
     const description =
       'Introductory data science covering Python, statistics, and machine learning basics. ' +
@@ -125,13 +120,13 @@ test.describe('Positive flows', () => {
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, description);
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     await expectProgramInList(page, programName);
   });
 });
 
 test.describe('Negative flows', () => {
-  test('TC-004 — Create remains disabled when Program Name is empty', async ({ page }) => {
+  test('TC-004 — Create remains disabled when Program Name is empty', async ({ page, trackProgram }) => {
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
 
@@ -140,7 +135,7 @@ test.describe('Negative flows', () => {
     await expect(dialog).toBeVisible();
   });
 
-  test('TC-005 — program is not created when user dismisses the modal', async ({ page }) => {
+  test('TC-005 — program is not created when user dismisses the modal', async ({ page, trackProgram }) => {
     const draftName = `Draft Program ${Date.now()}`;
 
     await goToPrograms(page);
@@ -150,7 +145,7 @@ test.describe('Negative flows', () => {
     await expect(page.getByText(draftName, { exact: true })).toHaveCount(0);
   });
 
-  test('TC-006 — non-admin user cannot access program creation', async ({ page }) => {
+  test('TC-006 — non-admin user cannot access program creation', async ({ page, trackProgram }) => {
     const nonAdminEmail = process.env.DIDAXIS_NON_ADMIN_EMAIL;
     const nonAdminPassword = process.env.DIDAXIS_NON_ADMIN_PASSWORD;
     test.skip(!nonAdminEmail || !nonAdminPassword, 'Set DIDAXIS_NON_ADMIN_EMAIL and DIDAXIS_NON_ADMIN_PASSWORD to run');
@@ -165,17 +160,17 @@ test.describe('Negative flows', () => {
     await expect(page.getByRole('button', { name: '+ New Program' })).toBeHidden();
   });
 
-  test('TC-007 — duplicate program name does not create a second conflicting entry', async ({ page }) => {
+  test('TC-007 — duplicate program name does not create a second conflicting entry', async ({ page, trackProgram }) => {
     const programName = `Web Development 2026 ${Date.now()}`;
 
     await goToPrograms(page);
     let dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, 'First description');
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
 
     dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, 'Another description');
-    await dialog.getByRole('button', { name: 'Create' }).click();
+    await clickCreate(page, dialog.getByRole('button', { name: 'Create' }), trackProgram);
 
     const duplicateError = page.getByText(/already|duplicate|exists|in use/i);
     if (await duplicateError.isVisible({ timeout: 5_000 }).catch(() => false)) {
@@ -194,29 +189,29 @@ test.describe('Negative flows', () => {
 });
 
 test.describe('Edge cases', () => {
-  test('TC-008 — program name with leading and trailing whitespace is trimmed', async ({ page }) => {
+  test('TC-008 — program name with leading and trailing whitespace is trimmed', async ({ page, trackProgram }) => {
     const suffix = Date.now();
     const storedName = `Cloud Computing 2026 ${suffix}`;
 
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, `  ${storedName}  `, 'Cloud infrastructure and DevOps track');
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     await expectProgramInList(page, storedName);
   });
 
-  test('TC-009 — program name accepts special characters and unicode', async ({ page }) => {
+  test('TC-009 — program name accepts special characters and unicode', async ({ page, trackProgram }) => {
     const programName = `AI & ML (2026) — Cohort #1 ${Date.now()}`;
     const description = 'Topics: NLP, CV, étude';
 
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, description);
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     await expectProgramInList(page, programName);
   });
 
-  test('TC-010 — program name at maximum allowed length is accepted', async ({ page }) => {
+  test('TC-010 — program name at maximum allowed length is accepted', async ({ page, trackProgram }) => {
     const suffix = String(Date.now());
     const programName = `${'A'.repeat(Math.max(0, 255 - suffix.length - 1))}${suffix}`;
     expect(programName.length).toBeLessThanOrEqual(255);
@@ -224,11 +219,11 @@ test.describe('Edge cases', () => {
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, 'Boundary test for name length');
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     await expectProgramInList(page, programName);
   });
 
-  test('TC-011 — program name exceeding maximum length is rejected', async ({ page }) => {
+  test('TC-011 — program name exceeding maximum length is rejected', async ({ page, trackProgram }) => {
     const suffix = String(Date.now());
     const overlongName = `${'B'.repeat(256 - suffix.length)}${suffix}`;
     expect(overlongName.length).toBeGreaterThan(255);
@@ -250,12 +245,12 @@ test.describe('Edge cases', () => {
       return;
     }
 
-    await createButton.click();
+    await clickCreate(page, createButton, trackProgram, { required: false });
     const created = await programRow(page, overlongName).isVisible().catch(() => false);
     expect(created).toBe(false);
   });
 
-  test('TC-012 — empty description behavior', async ({ page }) => {
+  test('TC-012 — empty description behavior', async ({ page, trackProgram }) => {
     const programName = `Cybersecurity Bootcamp ${Date.now()}`;
 
     await goToPrograms(page);
@@ -269,11 +264,11 @@ test.describe('Edge cases', () => {
       return;
     }
 
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     await expectProgramInList(page, programName);
   });
 
-  test('TC-013 — program name containing only whitespace is treated as empty', async ({ page }) => {
+  test('TC-013 — program name containing only whitespace is treated as empty', async ({ page, trackProgram }) => {
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
 
@@ -281,7 +276,7 @@ test.describe('Edge cases', () => {
     await expect(dialog.getByRole('button', { name: 'Create' })).toBeDisabled();
   });
 
-  test('TC-014 — XSS or script-like strings are stored safely', async ({ page }) => {
+  test('TC-014 — XSS or script-like strings are stored safely', async ({ page, trackProgram }) => {
     const programName = `Security Test Program ${Date.now()}`;
     const xssPayload = "<script>alert('xss')</script>";
     let alertDialogSeen = false;
@@ -301,7 +296,7 @@ test.describe('Edge cases', () => {
       return;
     }
 
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
     expect(alertDialogSeen).toBe(false);
     await expectProgramInList(page, programName);
   });

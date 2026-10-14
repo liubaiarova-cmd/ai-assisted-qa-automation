@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/cleanup.fixture';
+import type { Page } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
 import {
@@ -31,11 +32,11 @@ async function expectDescription(page: Page, programName: string, description: s
 }
 
 test.describe('Positive flows', () => {
-  test('TC-001 — edit form shows current program data', async ({ page }) => {
+  test('TC-001 — edit form shows current program data', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const description = 'Full-stack web development program';
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
     const dialog = await openEditForm(page, programName);
 
     await expect(dialog.getByRole('heading', { name: 'Edit Program' })).toBeVisible();
@@ -47,11 +48,11 @@ test.describe('Positive flows', () => {
     await expect(dialog.getByLabel('Default Exam Hours')).toHaveValue('3');
   });
 
-  test('TC-002 — updated program name appears in the list after save', async ({ page }) => {
+  test('TC-002 — updated program name appears in the list after save', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const updatedName = `${programName} - Updated`;
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(updatedName);
     await submitSave(dialog);
@@ -60,11 +61,11 @@ test.describe('Positive flows', () => {
     await expect(programRow(page, updatedName)).toBeVisible();
   });
 
-  test('TC-003 — name stays unchanged when only the description is edited', async ({ page }) => {
+  test('TC-003 — name stays unchanged when only the description is edited', async ({ page, trackProgram }) => {
     const programName = uniqueName('Data Science Fundamentals');
     const updatedDescription = 'Updated cohort description for 2026';
 
-    await createProgram(page, programName, 'Original cohort description');
+    await createProgram(page, programName, 'Original cohort description', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Description' }).fill(updatedDescription);
     await submitSave(dialog);
@@ -74,12 +75,12 @@ test.describe('Positive flows', () => {
     await expectDescription(page, programName, updatedDescription);
   });
 
-  test('TC-004 — name and description can be updated in one save', async ({ page }) => {
+  test('TC-004 — name and description can be updated in one save', async ({ page, trackProgram }) => {
     const programName = uniqueName('Cloud Computing 2026');
     const updatedName = `${programName} - Advanced`;
     const updatedDescription = 'Expanded curriculum with Kubernetes and Terraform';
 
-    await createProgram(page, programName, 'Cloud infrastructure and DevOps track');
+    await createProgram(page, programName, 'Cloud infrastructure and DevOps track', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(updatedName);
     await dialog.getByRole('textbox', { name: 'Description' }).fill(updatedDescription);
@@ -90,10 +91,10 @@ test.describe('Positive flows', () => {
     await expectDescription(page, updatedName, updatedDescription);
   });
 
-  test('TC-019 — edit form includes AI generation config fields', async ({ page }) => {
+  test('TC-019 — edit form includes AI generation config fields', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
 
     await expect(dialog.getByRole('button', { name: /Show AI Generation Config/ })).toBeVisible();
@@ -108,10 +109,10 @@ test.describe('Positive flows', () => {
 });
 
 test.describe('Negative flows', () => {
-  test('TC-005 — empty program name blocks save on edit', async ({ page }) => {
+  test('TC-005 — empty program name blocks save on edit', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill('');
 
@@ -120,11 +121,11 @@ test.describe('Negative flows', () => {
     await expect(programRow(page, programName)).toBeVisible();
   });
 
-  test('TC-006 — canceling edit does not persist changes', async ({ page }) => {
+  test('TC-006 — canceling edit does not persist changes', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const draftName = uniqueName('Temporary Draft Name');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(draftName);
     await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -134,7 +135,7 @@ test.describe('Negative flows', () => {
     await expect(page.getByText(draftName, { exact: true })).toHaveCount(0);
   });
 
-  test('TC-007 — non-admin cannot edit program details', async ({ page }) => {
+  test('TC-007 — non-admin cannot edit program details', async ({ page, trackProgram }) => {
     const nonAdminEmail = process.env.DIDAXIS_NON_ADMIN_EMAIL;
     const nonAdminPassword = process.env.DIDAXIS_NON_ADMIN_PASSWORD;
     test.skip(
@@ -143,7 +144,7 @@ test.describe('Negative flows', () => {
     );
 
     const programName = uniqueName('Web Development 2026');
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
 
     await page.goto(loginUrl);
     await page.getByLabel('Email').fill(nonAdminEmail!);
@@ -157,12 +158,12 @@ test.describe('Negative flows', () => {
     ).toHaveCount(0);
   });
 
-  test('TC-008 — renaming to an existing program name is currently accepted', async ({ page }) => {
+  test('TC-008 — renaming to an existing program name is currently accepted', async ({ page, trackProgram }) => {
     const existingName = uniqueName('Web Development 2026');
     const editedName = uniqueName('Cybersecurity Bootcamp');
 
-    await createProgram(page, existingName, 'Full-stack web development program');
-    await createProgram(page, editedName, 'Security operations track');
+    await createProgram(page, existingName, 'Full-stack web development program', trackProgram);
+    await createProgram(page, editedName, 'Security operations track', trackProgram);
 
     const dialog = await openEditForm(page, editedName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(existingName);
@@ -172,11 +173,11 @@ test.describe('Negative flows', () => {
     await expect(programRow(page, editedName)).toHaveCount(0);
   });
 
-  test('TC-009 — server failure does not show a false success', async ({ page }) => {
+  test('TC-009 — server failure does not show a false success', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const failedDescription = 'Change pending save failure test';
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Description' }).fill(failedDescription);
 
@@ -200,11 +201,11 @@ test.describe('Negative flows', () => {
     await expect(programRow(page, programName).getByText('Full-stack web development program')).toBeVisible();
   });
 
-  test('TC-022 — closing edit with the banner X does not persist changes', async ({ page }) => {
+  test('TC-022 — closing edit with the banner X does not persist changes', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const draftName = uniqueName('Closed Without Save');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(draftName);
     await dialog.getByRole('banner').getByRole('button').click();
@@ -216,11 +217,11 @@ test.describe('Negative flows', () => {
 });
 
 test.describe('Edge cases', () => {
-  test('TC-010 — leading and trailing whitespace in the name is trimmed', async ({ page }) => {
+  test('TC-010 — leading and trailing whitespace in the name is trimmed', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const trimmedName = uniqueName('Web Development 2026 - Trimmed');
 
-    await createProgram(page, programName, 'Original description');
+    await createProgram(page, programName, 'Original description', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(`  ${trimmedName}  `);
     await submitSave(dialog);
@@ -230,12 +231,12 @@ test.describe('Edge cases', () => {
     await expect(reopened.getByRole('textbox', { name: 'Program Name' })).toHaveValue(trimmedName);
   });
 
-  test('TC-011 — special characters and unicode persist after edit', async ({ page }) => {
+  test('TC-011 — special characters and unicode persist after edit', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const updatedName = uniqueName('AI & ML (2026) — Cohort #2');
     const description = 'Résumé skills: NLP, CV, 100% hands-on';
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(updatedName);
     await dialog.getByRole('textbox', { name: 'Description' }).fill(description);
@@ -245,13 +246,13 @@ test.describe('Edge cases', () => {
     await expectDescription(page, updatedName, description);
   });
 
-  test('TC-012 — program name of 255 characters saves', async ({ page }) => {
+  test('TC-012 — program name of 255 characters saves', async ({ page, trackProgram }) => {
     const suffix = `-${Date.now()}`;
     const programName = uniqueName('Web Development 2026');
     const maxName = `${'A'.repeat(255 - suffix.length)}${suffix}`;
     expect(maxName).toHaveLength(255);
 
-    await createProgram(page, programName, 'Boundary description');
+    await createProgram(page, programName, 'Boundary description', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(maxName);
     await submitSave(dialog);
@@ -259,13 +260,13 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, maxName)).toBeVisible();
   });
 
-  test('TC-013 — program name over 255 characters is currently accepted', async ({ page }) => {
+  test('TC-013 — program name over 255 characters is currently accepted', async ({ page, trackProgram }) => {
     const suffix = `-${Date.now()}`;
     const programName = uniqueName('Web Development 2026');
     const overlongName = `${'B'.repeat(256 - suffix.length)}${suffix}`;
     expect(overlongName.length).toBeGreaterThan(255);
 
-    await createProgram(page, programName, 'Boundary description');
+    await createProgram(page, programName, 'Boundary description', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(overlongName);
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeEnabled();
@@ -275,20 +276,20 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-014 — whitespace-only name is treated as empty', async ({ page }) => {
+  test('TC-014 — whitespace-only name is treated as empty', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill('   ');
 
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
-  test('TC-015 — clearing the description is allowed', async ({ page }) => {
+  test('TC-015 — clearing the description is allowed', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Description' }).fill('');
     await submitSave(dialog);
@@ -300,10 +301,10 @@ test.describe('Edge cases', () => {
     await expectDescription(page, programName, '');
   });
 
-  test('TC-016 — save without modifications leaves a single row', async ({ page }) => {
+  test('TC-016 — save without modifications leaves a single row', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeEnabled();
     await submitSave(dialog);
@@ -311,7 +312,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(1);
   });
 
-  test('TC-017 — script-like description content is stored as text', async ({ page }) => {
+  test('TC-017 — script-like description content is stored as text', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const payload = '<img src=x onerror=alert(1)>';
     let alertSeen = false;
@@ -321,7 +322,7 @@ test.describe('Edge cases', () => {
       await browserDialog.dismiss();
     });
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Description' }).fill(payload);
     await submitSave(dialog);
@@ -331,12 +332,12 @@ test.describe('Edge cases', () => {
     await expectDescription(page, programName, payload);
   });
 
-  test('TC-018 — concurrent edits keep the last write', async ({ page, browser }) => {
+  test('TC-018 — concurrent edits keep the last write', async ({ page, browser, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const sessionAName = `${programName} - Session A`;
     const sessionBDescription = 'Session B description';
 
-    await createProgram(page, programName, 'Original cohort description');
+    await createProgram(page, programName, 'Original cohort description', trackProgram);
 
     const sessionB = await browser.newContext();
     const pageB = await sessionB.newPage();
@@ -368,10 +369,10 @@ test.describe('Edge cases', () => {
     }
   });
 
-  test('TC-020 — default hours stay set when only description is edited', async ({ page }) => {
+  test('TC-020 — default hours stay set when only description is edited', async ({ page, trackProgram }) => {
     const programName = uniqueName('Data Science Fundamentals');
 
-    await createProgram(page, programName, 'Original cohort description');
+    await createProgram(page, programName, 'Original cohort description', trackProgram);
     const dialog = await openEditForm(page, programName);
     await expect(dialog.getByLabel('Default Session Hours')).toHaveValue('4');
     await expect(dialog.getByLabel('Default Exam Hours')).toHaveValue('3');
@@ -387,11 +388,11 @@ test.describe('Edge cases', () => {
     await expect(reopened.getByLabel('Default Exam Hours')).toHaveValue('3');
   });
 
-  test('TC-021 — single-character program name is accepted on edit', async ({ page }) => {
+  test('TC-021 — single-character program name is accepted on edit', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const shortName = uniqueName('A');
 
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(shortName);
     await submitSave(dialog);
@@ -399,13 +400,13 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, shortName)).toBeVisible();
   });
 
-  test('TC-023 — case-only duplicate program name is currently accepted', async ({ page }) => {
+  test('TC-023 — case-only duplicate program name is currently accepted', async ({ page, trackProgram }) => {
     const existingName = uniqueName('Web Development 2026');
     const editedName = uniqueName('Cybersecurity Bootcamp');
     const caseVariant = existingName.toLowerCase();
 
-    await createProgram(page, existingName, 'Full-stack web development program');
-    await createProgram(page, editedName, 'Security operations track');
+    await createProgram(page, existingName, 'Full-stack web development program', trackProgram);
+    await createProgram(page, editedName, 'Security operations track', trackProgram);
 
     const dialog = await openEditForm(page, editedName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(caseVariant);

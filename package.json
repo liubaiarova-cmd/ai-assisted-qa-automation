@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
+    "cleanup:programs": "playwright test --config=playwright.manual.config.ts",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed"
   },

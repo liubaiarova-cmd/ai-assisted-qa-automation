@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/cleanup.fixture';
 import {
   acceptDeleteConfirm,
   createProgram,
@@ -24,7 +24,7 @@ test.describe('Positive flows', () => {
     await login(page);
   });
 
-  test('TC-001 — program list shows name and description', async ({ page }) => {
+  test('TC-001 — program list shows name and description', async ({ page, trackProgram }) => {
     const webName = uniqueName('Web Development 2026');
     const webDescription = 'Full-stack web development program';
     const dataName = uniqueName('Data Science Fundamentals');
@@ -32,16 +32,16 @@ test.describe('Positive flows', () => {
     const securityName = uniqueName('Cybersecurity Bootcamp');
     const securityDescription = 'Security operations and incident response';
 
-    await createProgram(page, webName, webDescription);
-    await createProgram(page, dataName, dataDescription);
-    await createProgram(page, securityName, securityDescription);
+    await createProgram(page, webName, webDescription, trackProgram);
+    await createProgram(page, dataName, dataDescription, trackProgram);
+    await createProgram(page, securityName, securityDescription, trackProgram);
 
     await expect(programRow(page, webName).getByText(webDescription)).toBeVisible();
     await expect(programRow(page, dataName).getByText(dataDescription)).toBeVisible();
     await expect(programRow(page, securityName).getByText(securityDescription)).toBeVisible();
   });
 
-  test('TC-002 — empty state explains how to create the first program', async ({ page }) => {
+  test('TC-002 — empty state explains how to create the first program', async ({ page, trackProgram }) => {
     await page.route(/\/api\/programs$/, async (route) => {
       if (route.request().method() !== 'GET') {
         await route.continue();
@@ -61,7 +61,7 @@ test.describe('Positive flows', () => {
     await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible();
   });
 
-  test('TC-003 — the empty-state prompt opens program creation', async ({ page }) => {
+  test('TC-003 — the empty-state prompt opens program creation', async ({ page, trackProgram }) => {
     const programName = uniqueName('Mobile Development 2026');
     const description = 'iOS and Android track';
     const programsApi = /\/api\/programs$/;
@@ -84,27 +84,27 @@ test.describe('Positive flows', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'New Program' })).toBeVisible();
     await fillProgramForm(dialog, programName, description);
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
 
     await expect(page.getByText(emptyProgramsMessage)).toHaveCount(0);
     await expect(programRow(page, programName).getByText(description)).toBeVisible();
   });
 
-  test('TC-004 — the list shows a newly created program without a manual refresh', async ({ page }) => {
+  test('TC-004 — the list shows a newly created program without a manual refresh', async ({ page, trackProgram }) => {
     const programName = uniqueName('Cloud Computing 2026');
     const description = 'AWS and Azure fundamentals';
 
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await fillProgramForm(dialog, programName, description);
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
 
     await expect(programRow(page, programName).getByText(description)).toBeVisible();
   });
 });
 
 test.describe('Negative flows', () => {
-  test('TC-005 — an unauthorized visitor does not see the program list', async ({ page }) => {
+  test('TC-005 — an unauthorized visitor does not see the program list', async ({ page, trackProgram }) => {
     await page.goto(programsUrl);
 
     await expect(page).toHaveURL(/\/login/);
@@ -113,18 +113,18 @@ test.describe('Negative flows', () => {
     await expect(page.getByText(emptyProgramsMessage)).toHaveCount(0);
   });
 
-  test('TC-006 — the empty state is hidden when programs exist', async ({ page }) => {
+  test('TC-006 — the empty state is hidden when programs exist', async ({ page, trackProgram }) => {
     test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
     await login(page);
 
     const programName = uniqueName('Web Development 2026');
-    await createProgram(page, programName, 'Full-stack web development program');
+    await createProgram(page, programName, 'Full-stack web development program', trackProgram);
 
     await expect(programRow(page, programName)).toBeVisible();
     await expect(page.getByText(emptyProgramsMessage)).toHaveCount(0);
   });
 
-  test('TC-007 — a failed list load is distinct from an empty catalog', async ({ page }) => {
+  test('TC-007 — a failed list load is distinct from an empty catalog', async ({ page, trackProgram }) => {
     test.fail(true, 'A failed programs request currently renders the empty state');
     test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
     await login(page);
@@ -147,7 +147,7 @@ test.describe('Negative flows', () => {
     await expect(page.getByText(/error|retry|failed|try again/i)).toBeVisible();
   });
 
-  test('TC-008 — a non-admin does not see a create prompt on an empty list', async ({ page }) => {
+  test('TC-008 — a non-admin does not see a create prompt on an empty list', async ({ page, trackProgram }) => {
     const nonAdminEmail = process.env.DIDAXIS_NON_ADMIN_EMAIL;
     const nonAdminPassword = process.env.DIDAXIS_NON_ADMIN_PASSWORD;
     test.skip(
@@ -186,25 +186,25 @@ test.describe('Edge cases', () => {
     await login(page);
   });
 
-  test('TC-009 — special characters display correctly in the list', async ({ page }) => {
+  test('TC-009 — special characters display correctly in the list', async ({ page, trackProgram }) => {
     const programName = uniqueName('Informatique & IA - Niveau 2');
     const description = 'Programme bilingue — 100% pratique';
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
 
     await expect(programRow(page, programName)).toBeVisible();
     await expect(programRow(page, programName).getByText(description)).toBeVisible();
   });
 
-  test('TC-010 — long name and description stay inside their row', async ({ page }) => {
+  test('TC-010 — long name and description stay inside their row', async ({ page, trackProgram }) => {
     const suffix = String(Date.now());
     const programName = `${'Long program name '.repeat(8).trim()} ${suffix}`;
     const description =
       'Introductory data science covering Python, statistics, and machine learning basics. '.repeat(4);
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
     const neighborName = uniqueName('Layout Neighbor');
-    await createProgram(page, neighborName, 'Short neighbor description');
+    await createProgram(page, neighborName, 'Short neighbor description', trackProgram);
 
     const longRow = programRow(page, programName);
     const neighborRow = programRow(page, neighborName);
@@ -220,24 +220,24 @@ test.describe('Edge cases', () => {
     await expect(longRow.getByText(programName, { exact: true })).toBeVisible();
   });
 
-  test('TC-011 — a program with an empty description is still listed', async ({ page }) => {
+  test('TC-011 — a program with an empty description is still listed', async ({ page, trackProgram }) => {
     const programName = uniqueName('Cybersecurity Bootcamp');
 
     await goToPrograms(page);
     const dialog = await openNewProgramForm(page);
     await dialog.getByLabel('Program Name').fill(programName);
-    await submitCreate(dialog);
+    await submitCreate(page, dialog, trackProgram);
 
     const row = programRow(page, programName);
     await expect(row).toBeVisible();
     await expect(row.getByRole('paragraph')).toHaveCount(1);
   });
 
-  test('TC-012 — a large program list still shows the created program', async ({ page }) => {
+  test('TC-012 — a large program list still shows the created program', async ({ page, trackProgram }) => {
     const programName = uniqueName('Paged Program');
     const description = 'Visible among a large catalog';
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
     const nextPage = page.getByRole('button', { name: /next/i });
     if ((await nextPage.count()) > 0) {
       await nextPage.first().click();
@@ -247,7 +247,7 @@ test.describe('Edge cases', () => {
     expect(await page.getByRole('row').count()).toBeGreaterThan(2);
   });
 
-  test('TC-013 — filtering by name keeps matching programs only', async ({ page }) => {
+  test('TC-013 — filtering by name keeps matching programs only', async ({ page, trackProgram }) => {
     await goToPrograms(page);
     const filter = await programFilter(page);
     test.skip(!filter, 'Programs page has no search or filter control');
@@ -257,9 +257,9 @@ test.describe('Edge cases', () => {
     const webDesign = `Web Design ${suffix}`;
     const dataScience = `Data Science Fundamentals ${suffix}`;
 
-    await createProgram(page, webDev, 'Full-stack web development program');
-    await createProgram(page, webDesign, 'Visual design track');
-    await createProgram(page, dataScience, 'Introductory data science curriculum');
+    await createProgram(page, webDev, 'Full-stack web development program', trackProgram);
+    await createProgram(page, webDesign, 'Visual design track', trackProgram);
+    await createProgram(page, dataScience, 'Introductory data science curriculum', trackProgram);
 
     await filter!.fill('Web');
     await expect(programRow(page, webDev)).toBeVisible();
@@ -267,27 +267,27 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, dataScience)).toHaveCount(0);
   });
 
-  test('TC-014 — a filter with no matches is different from an empty catalog', async ({ page }) => {
+  test('TC-014 — a filter with no matches is different from an empty catalog', async ({ page, trackProgram }) => {
     await goToPrograms(page);
     const filter = await programFilter(page);
     test.skip(!filter, 'Programs page has no search or filter control');
 
-    await createProgram(page, uniqueName('Web Development 2026'), 'Full-stack web development program');
+    await createProgram(page, uniqueName('Web Development 2026'), 'Full-stack web development program', trackProgram);
     await filter!.fill(`ZZZ-No-Match-${Date.now()}`);
     await expect(page.getByText(/no results|no matches|nothing found/i)).toBeVisible();
     await expect(page.getByText(emptyProgramsMessage)).toHaveCount(0);
   });
 
-  test('TC-015 — the list can be sorted by name', async ({ page }) => {
+  test('TC-015 — the list can be sorted by name', async ({ page, trackProgram }) => {
     const sortControl = page.getByRole('button', { name: /sort/i });
     test.skip((await sortControl.count()) === 0, 'Programs page has no sort control');
 
     const alpha = uniqueName('Alpha Program');
     const beta = uniqueName('Beta Program');
     const gamma = uniqueName('Gamma Program');
-    await createProgram(page, gamma, 'Gamma description');
-    await createProgram(page, alpha, 'Alpha description');
-    await createProgram(page, beta, 'Beta description');
+    await createProgram(page, gamma, 'Gamma description', trackProgram);
+    await createProgram(page, alpha, 'Alpha description', trackProgram);
+    await createProgram(page, beta, 'Beta description', trackProgram);
 
     await sortControl.first().click();
     const names = await page.getByRole('row').allInnerTexts();
@@ -296,12 +296,12 @@ test.describe('Edge cases', () => {
     expect(positions[1]).toBeLessThan(positions[2]);
   });
 
-  test('TC-016 — the list updates after edit and delete', async ({ page }) => {
+  test('TC-016 — the list updates after edit and delete', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const updatedName = `${programName} - Updated`;
     const description = 'Full-stack web development program';
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
     const dialog = await openEditForm(page, programName);
     await dialog.getByLabel('Program Name').fill(updatedName);
     await submitSave(dialog);
@@ -311,7 +311,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, updatedName)).toHaveCount(0);
   });
 
-  test('TC-017 — HTML in a description is not executed in the list', async ({ page }) => {
+  test('TC-017 — HTML in a description is not executed in the list', async ({ page, trackProgram }) => {
     const programName = uniqueName('Security Test Program');
     const description = '<b>Bold</b> <script>alert(1)</script>';
     let alertSeen = false;
@@ -321,17 +321,17 @@ test.describe('Edge cases', () => {
       await dialog.dismiss();
     });
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
 
     expect(alertSeen).toBe(false);
     await expect(programRow(page, programName).getByText(description)).toBeVisible();
   });
 
-  test('TC-018 — name and description stay readable on a narrow viewport', async ({ page }) => {
+  test('TC-018 — name and description stay readable on a narrow viewport', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const description = 'Full-stack web development program';
 
-    await createProgram(page, programName, description);
+    await createProgram(page, programName, description, trackProgram);
     await page.setViewportSize({ width: 390, height: 844 });
 
     const row = programRow(page, programName);

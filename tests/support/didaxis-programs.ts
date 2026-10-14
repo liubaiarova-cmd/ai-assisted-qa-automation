@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Response } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -75,11 +75,49 @@ export async function fillProgramForm(
   }
 }
 
-export async function submitCreate(dialog: Locator): Promise<void> {
+export type TrackProgram = (uuid: string) => void;
+
+function isProgramCreate(response: Response): boolean {
+  if (response.request().method() !== 'POST') return false;
+  try {
+    return new URL(response.url()).pathname === '/api/programs';
+  } catch {
+    return false;
+  }
+}
+
+export async function trackCreatedProgram(response: Response, trackProgram: TrackProgram): Promise<void> {
+  if (response.status() !== 201) return;
+  const id = (await response.json())?.data?.id as string | undefined;
+  if (!id) throw new Error('Create response did not include data.id');
+  trackProgram(id);
+}
+
+export async function submitCreate(page: Page, dialog: Locator, trackProgram: TrackProgram): Promise<void> {
+  const responsePromise = page.waitForResponse(
+    (response) => isProgramCreate(response) && response.status() === 201,
+  );
   const createButton = dialog.getByRole('button', { name: 'Create' });
   await expect(createButton).toBeEnabled({ timeout: 10_000 });
   await createButton.click();
+  await trackCreatedProgram(await responsePromise, trackProgram);
   await expect(dialog).toBeHidden({ timeout: 20_000 });
+}
+
+export async function clickCreate(
+  page: Page,
+  button: Locator,
+  trackProgram: TrackProgram,
+  options?: { required?: boolean },
+): Promise<void> {
+  const required = options?.required !== false;
+  const responsePromise = page.waitForResponse(isProgramCreate, { timeout: 20_000 }).catch((error: unknown) => {
+    if (!required) return null;
+    throw error;
+  });
+  await button.click();
+  const response = await responsePromise;
+  if (response) await trackCreatedProgram(response, trackProgram);
 }
 
 export async function expectProgramInList(page: Page, programName: string): Promise<void> {
@@ -92,12 +130,13 @@ export async function expectProgramInList(page: Page, programName: string): Prom
 export async function createProgram(
   page: Page,
   programName: string,
-  description?: string,
+  description: string | undefined,
+  trackProgram: TrackProgram,
 ): Promise<void> {
   await goToPrograms(page);
   const dialog = await openNewProgramForm(page);
   await fillProgramForm(dialog, programName, description);
-  await submitCreate(dialog);
+  await submitCreate(page, dialog, trackProgram);
   await expectProgramInList(page, programName);
 }
 
