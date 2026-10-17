@@ -4,7 +4,6 @@ import {
   createProgram,
   emptyProgramsMessage,
   goToPrograms,
-  login,
   openEditForm,
   openNewProgramForm,
   programFilter,
@@ -19,11 +18,6 @@ import {
 test.setTimeout(120_000);
 
 test.describe('Positive flows', () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
-    await login(page);
-  });
-
   test('TC-001 — program list shows name and description', async ({ page, trackProgram }) => {
     const webName = uniqueName('Web Development 2026');
     const webDescription = 'Full-stack web development program';
@@ -104,19 +98,20 @@ test.describe('Positive flows', () => {
 });
 
 test.describe('Negative flows', () => {
-  test('TC-005 — an unauthorized visitor does not see the program list', async ({ page, trackProgram }) => {
-    await page.goto(programsUrl);
+  test.describe(() => {
+    test.use({ storageState: { cookies: [], origins: [] } });
 
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '+ New Program' })).toHaveCount(0);
-    await expect(page.getByText(emptyProgramsMessage)).toHaveCount(0);
+    test('TC-005 — an unauthorized visitor does not see the program list', async ({ page }) => {
+      await page.goto(programsUrl);
+
+      await expect(page).toHaveURL(/\/login/);
+      await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '+ New Program' })).toHaveCount(0);
+      await expect(page.getByText(emptyProgramsMessage)).toHaveCount(0);
+    });
   });
 
   test('TC-006 — the empty state is hidden when programs exist', async ({ page, trackProgram }) => {
-    test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
-    await login(page);
-
     const programName = uniqueName('Web Development 2026');
     await createProgram(page, programName, 'Full-stack web development program', trackProgram);
 
@@ -126,8 +121,6 @@ test.describe('Negative flows', () => {
 
   test('TC-007 — a failed list load is distinct from an empty catalog', async ({ page, trackProgram }) => {
     test.fail(true, 'A failed programs request currently renders the empty state');
-    test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
-    await login(page);
 
     await page.route(/\/api\/programs$/, async (route) => {
       if (route.request().method() !== 'GET') {
@@ -181,11 +174,6 @@ test.describe('Negative flows', () => {
 });
 
 test.describe('Edge cases', () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
-    await login(page);
-  });
-
   test('TC-009 — special characters display correctly in the list', async ({ page, trackProgram }) => {
     const programName = uniqueName('Informatique & IA - Niveau 2');
     const description = 'Programme bilingue — 100% pratique';

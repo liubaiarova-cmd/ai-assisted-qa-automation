@@ -5,7 +5,6 @@ import path from 'path';
 import {
   createProgram,
   goToPrograms,
-  login,
   loginUrl,
   openEditForm,
   programRow,
@@ -16,11 +15,6 @@ import {
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 test.setTimeout(120_000);
-
-test.beforeEach(async ({ page }) => {
-  test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
-  await login(page);
-});
 
 async function expectDescription(page: Page, programName: string, description: string): Promise<void> {
   const dialog = await openEditForm(page, programName);
@@ -339,10 +333,9 @@ test.describe('Edge cases', () => {
 
     await createProgram(page, programName, 'Original cohort description', trackProgram);
 
-    const sessionB = await browser.newContext();
+    const sessionB = await browser.newContext({ storageState: 'playwright/.auth/user.json' });
     const pageB = await sessionB.newPage();
     try {
-      await login(pageB);
       await goToPrograms(pageB);
       const dialogB = await openEditForm(pageB, programName);
 

@@ -4,7 +4,6 @@ import {
   createProgram,
   dismissDeleteConfirm,
   goToPrograms,
-  login,
   loginUrl,
   openNewProgramForm,
   programFilter,
@@ -15,11 +14,6 @@ import {
 } from './support/didaxis-programs';
 
 test.setTimeout(120_000);
-
-test.beforeEach(async ({ page }) => {
-  test.skip(!process.env.DIDAXIS_EMAIL || !process.env.DIDAXIS_PASSWORD, 'Didaxis credentials missing');
-  await login(page);
-});
 
 test.describe('Positive flows', () => {
   test('TC-001 — confirmed deletion removes the program from the list', async ({ page, trackProgram }) => {
