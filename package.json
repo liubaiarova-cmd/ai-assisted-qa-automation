@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/liubaiarova-cmd/ai-assisted-qa-automation#readme",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.2"
   },

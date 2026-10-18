@@ -1,55 +1,33 @@
 ---
 name: pom-conventions
 description: >
-  Creates Playwright Page Objects using locators so tests do not repeat
-  the same selectors. Use when creating, reviewing, or refactoring page
-  objects under pages/, or when a Playwright test needs UI actions.
+  Creates Playwright Page Objects so tests do not repeat selectors. One class
+  per page or component (LoginPage, ProgramsPage, NewProgramModal). Locators
+  are readonly constructor properties in priority order getByRole, then
+  getByLabel or getByPlaceholder, then getByText, then getByTestId. Disambiguate
+  with filter({ hasText }). Action methods only; no assertions or waitForTimeout
+  in pages/. Use when creating, reviewing, or refactoring page objects under
+  pages/, or when a Playwright test needs UI actions.
 ---
 
 # Page Object conventions
 
-create Page Objects using locators to prevent repeatability in tests
+## Steps
 
-# You must:
+One Page Object class per page or distinct component. Examples: LoginPage, ProgramsPage, NewProgramModal.
 
-analyze pages, locators are readonly properties defined in the constructor, using
-  getByRole / getByLabel / getByText only — no CSS, no XPath.
-- Methods perform user actions (goto, openNewProgramForm, createProgram, click).
-- No assertions inside the Page Objects — leave every expect() in the test.
+Define locators as readonly properties in the constructor, in this priority order only: getByRole → getByLabel / getByPlaceholder → getByText → getByTestId (escape hatch only — comment why nothing higher worked). Never CSS selectors, XPath, or brittle text.
 
-## Example
+If a locator matches more than one element, disambiguate with .filter({ hasText }) — do not use .first().
 
-```ts
-import type { Locator, Page } from '@playwright/test';
+Provide methods for user actions: goto, clickX, fillY, submit. Methods perform actions; they do not assert. Never use waitForTimeout inside POMs — callers wait with web-first expect(locator).toBeVisible() / .toBeEnabled() / .toHaveText().
 
-export class ProgramsPage {
-  readonly newProgramButton: Locator;
-  readonly programNameInput: Locator;
-  readonly duplicateError: Locator;
+No assertions inside Page Objects. All expect(...) calls live in the test files, never in pages/. Prefer auto-retrying web-first expects; never expect(await locator.isVisible()).toBe(true).
 
-  constructor(private readonly page: Page) {
-    this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
-    this.programNameInput = page.getByLabel('Program Name');
-    this.duplicateError = page.getByText(/already|duplicate|exists|in use/i);
-  }
+Compose POMs when a page contains distinct components — e.g. ProgramsPage holds a NewProgramModal instance.
 
-  async goto(): Promise<void> {
-    await this.page.goto(programsUrl);
-  }
+Import POMs at the top of each spec; instantiate with new XxxPage(page).
 
-  async openNewProgramForm(): Promise<void> {
-    await this.newProgramButton.click();
-  }
+## Output
 
-  async createProgram(programName: string): Promise<void> {
-    await this.goto();
-    await this.openNewProgramForm();
-    await this.programNameInput.fill(programName);
-  }
-}
-```
-
-```ts
-await programsPage.createProgram(name);
-await expect(programsPage.duplicateError).toBeVisible();
-```
+Page Object files in pages/. Tests in tests/ that import them.

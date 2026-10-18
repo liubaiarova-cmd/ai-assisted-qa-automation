@@ -1,16 +1,36 @@
 import type { Locator, Page } from '@playwright/test';
-import { programsUrl, type TrackProgram } from '../tests/support/didaxis-programs';
+import { emptyProgramsMessage, programsUrl, type TrackProgram } from '../tests/support/didaxis-programs';
 import { NewProgramModal } from './NewProgramModal';
 
 export class ProgramsPage {
   readonly newProgramButton: Locator;
+  readonly createFirstProgramButton: Locator;
+  readonly emptyStateMessage: Locator;
   readonly duplicateError: Locator;
   readonly modal: NewProgramModal;
 
   constructor(private readonly page: Page) {
     this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
+    this.createFirstProgramButton = page.getByRole('button', { name: 'Create Program' });
+    this.emptyStateMessage = page.getByText(emptyProgramsMessage);
     this.duplicateError = page.getByText(/already|duplicate|exists|in use/i);
     this.modal = new NewProgramModal(page);
+  }
+
+  async filterControl(): Promise<Locator | null> {
+    const candidates = [
+      this.page.getByRole('searchbox'),
+      this.page.getByPlaceholder(/search|filter/i),
+      this.page.getByLabel(/search|filter/i),
+    ];
+
+    for (const candidate of candidates) {
+      if ((await candidate.count()) > 0) {
+        return candidate.first();
+      }
+    }
+
+    return null;
   }
 
   programRow(programName: string): Locator {
@@ -34,6 +54,14 @@ export class ProgramsPage {
   async goto(): Promise<void> {
     await this.page.goto(programsUrl);
     await this.newProgramButton.waitFor({ state: 'visible' });
+    await this.waitForListSurface();
+  }
+
+  async waitForListSurface(): Promise<void> {
+    await this.page
+      .getByRole('table')
+      .or(this.emptyStateMessage)
+      .waitFor({ state: 'visible', timeout: 30_000 });
   }
 
   async reload(): Promise<void> {
