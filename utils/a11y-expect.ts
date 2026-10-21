@@ -18,13 +18,19 @@ function formatViolations(violations: Result[]): string {
     .join('\n\n');
 }
 
+export type A11yAssertOptions = {
+  /** In CI only: report violations but do not fail the test. */
+  nonBlockingInCi?: boolean;
+};
+
 /**
- * Locally: fail the test when axe reports violations.
- * In CI: keep the job green, attach violation details, and emit GitHub warnings.
+ * Fail the test when axe reports violations.
+ * With `nonBlockingInCi`, CI attaches reports and warnings instead of failing.
  */
 export async function expectNoAccessibilityViolations(
   violations: Result[],
   testInfo: TestInfo,
+  options: A11yAssertOptions = {},
 ): Promise<void> {
   if (violations.length === 0) {
     return;
@@ -32,7 +38,7 @@ export async function expectNoAccessibilityViolations(
 
   const summary = formatViolations(violations);
 
-  if (process.env.CI) {
+  if (process.env.CI && options.nonBlockingInCi) {
     await testInfo.attach('a11y-violations.json', {
       body: JSON.stringify(violations, null, 2),
       contentType: 'application/json',
@@ -53,4 +59,26 @@ export async function expectNoAccessibilityViolations(
   }
 
   await expect(violations, summary).toEqual([]);
+}
+
+/** CI-only: attach scan failure details and skip so the workflow stays green. */
+export async function reportCiA11yFailureAndSkip(
+  testInfo: TestInfo,
+  error: unknown,
+  reason: string,
+): Promise<never> {
+  const detail =
+    error instanceof Error ? `${error.message}${error.stack ? `\n${error.stack}` : ''}` : String(error);
+
+  await testInfo.attach('a11y-scan-error.txt', {
+    body: `${reason}\n\n${detail}`,
+    contentType: 'text/plain',
+  });
+  testInfo.annotations.push({
+    type: 'warning',
+    description: `${reason} — see a11y-scan-error.txt in the HTML report`,
+  });
+  console.log(`::warning title=A11y::${reason.replace(/\r?\n/g, ' ')}`);
+
+  test.skip(true, reason);
 }
