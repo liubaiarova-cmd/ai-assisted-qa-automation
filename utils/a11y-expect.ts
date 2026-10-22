@@ -1,4 +1,4 @@
-import { expect, type TestInfo } from '@playwright/test';
+import { expect, test, type TestInfo } from '@playwright/test';
 import type { Result } from 'axe-core';
 
 function formatViolations(violations: Result[]): string {
@@ -81,4 +81,40 @@ export async function reportCiA11yFailureAndSkip(
   console.log(`::warning title=A11y::${reason.replace(/\r?\n/g, ' ')}`);
 
   test.skip(true, reason);
+}
+
+export type RunA11yCheckOptions = {
+  /** Shown on CI skip/warning when the scan cannot finish. */
+  ciLabel?: string;
+  ciTimeoutMs?: number;
+};
+
+const DEFAULT_CI_A11Y_TIMEOUT_MS = 240_000;
+
+/**
+ * Locally: fail on violations or scan errors.
+ * In CI: attach a report and stay green; skip with attachments if the scan cannot finish.
+ */
+export async function runA11yCheck(
+  testInfo: TestInfo,
+  scan: () => Promise<Result[]>,
+  options: RunA11yCheckOptions = {},
+): Promise<void> {
+  if (process.env.CI) {
+    testInfo.setTimeout(options.ciTimeoutMs ?? DEFAULT_CI_A11Y_TIMEOUT_MS);
+    try {
+      const violations = await scan();
+      await expectNoAccessibilityViolations(violations, testInfo, { nonBlockingInCi: true });
+    } catch (error) {
+      await reportCiA11yFailureAndSkip(
+        testInfo,
+        error,
+        options.ciLabel ?? 'Accessibility check did not complete in CI',
+      );
+    }
+    return;
+  }
+
+  const violations = await scan();
+  await expectNoAccessibilityViolations(violations, testInfo);
 }
