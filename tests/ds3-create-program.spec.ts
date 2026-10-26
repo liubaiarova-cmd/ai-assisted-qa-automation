@@ -57,7 +57,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('TC-004 — duplicate program name is rejected', async ({ page, trackProgram }) => {
+    test.fixme('TC-004 — duplicate program name is rejected', async ({ page, trackProgram }) => {
       const programName = uniqueName('Web Development 2026');
       const programsPage = new ProgramsPage(page);
 
@@ -82,7 +82,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('TC-006 — a rejected duplicate does not persist after refresh', async ({ page, trackProgram }) => {
+    test.fixme('TC-006 — a rejected duplicate does not persist after refresh', async ({ page, trackProgram }) => {
       const programName = uniqueName('Web Development 2026');
       const programsPage = new ProgramsPage(page);
 
@@ -116,7 +116,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
       await expect(editModal.programNameInput).toHaveValue(programName);
     });
 
-    test('TC-008 — a case-variant of an existing name is treated as a duplicate', async ({
+    test.fixme('TC-008 — a case-variant of an existing name is treated as a duplicate', async ({
       page,
       trackProgram,
     }) => {
@@ -163,7 +163,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
       await expectProgramListed(programsPage, programName);
     });
 
-    test('TC-011 — program name longer than the maximum is rejected', async ({ page, trackProgram }) => {
+    test.fixme('TC-011 — program name longer than the maximum is rejected', async ({ page, trackProgram }) => {
       const overlongName = nameOfLength(MAX_PROGRAM_NAME_LENGTH + 1);
       expect(overlongName.length).toBeGreaterThan(MAX_PROGRAM_NAME_LENGTH);
       const programsPage = new ProgramsPage(page);

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { baseUrl, login } from '../support/didaxis-programs';
-import { idsToDelete, parseDeleteLimit, programIds } from '../support/delete-limit';
+import { baseUrl, login } from '../../tests/support/didaxis-programs';
+import { idsToDelete, parseDeleteLimit, programIds } from '../../tests/support/delete-limit';
 
 function tokenExpired(token: string): boolean {
   try {

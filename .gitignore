@@ -3,6 +3,7 @@
 node_modules/
 /test-results/
 /playwright-report/
+.ci-triage/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
@@ -11,3 +12,4 @@ node_modules/
 mcp.log
 mcp.json
 playwright-mcp.sh
+manual/delete-programs.spec.ts
