@@ -9,10 +9,14 @@ description: When a CI run is red, pull the run's logs and the playwright-report
 1. Pull the failed run's logs + playwright-report artifact (GitHub MCP / gh CLI).
 2. Read the Playwright error: failing test, expected vs received, trace path.
 3. Cross-reference: the spec, the POM, and the Didaxis source in the repo if exist.
-4. Classify: real app bug (route to a Jira bug via bug-reporter) vs
- test issue (propose a patch for human review).
-5. Report: post root cause, affected file, expected/actual, suggested fix,
- and evidence (trace/screenshot + run id) as a PR comment.
+4. If step 1–2 lack evidence or classification is unclear, reproduce the failing flow
+   on the real app — first tool that works: Playwright MCP → `agent-browser` CLI →
+   Playwright CLI (`npx playwright test <file> -g "<title>" --headed --trace on`);
+   record actual UI behaviour and which tool you used.
+5. Classify: real app bug (route to a Jira bug via bug-reporter) vs
+   test issue (propose a patch for human review).
+6. Report: post root cause, affected file, expected/actual, suggested fix,
+   and evidence (trace/screenshot, live-repro notes, + run id) as a PR comment.
 
 ## Rules
 - Never merge a fix automatically — propose, a human approves.

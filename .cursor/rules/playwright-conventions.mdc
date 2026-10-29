@@ -1,0 +1,48 @@
+---
+description: How this project writes Playwright tests — auth, POM, locators, cleanup, data.
+globs: tests/**
+alwaysApply: false
+---
+
+# Playwright Conventions
+
+## Auth
+
+Stored session by default; UI login only for login-page tests.
+
+- `tests/auth.setup.ts` logs in once and writes `playwright/.auth/user.json`.
+- Chromium specs use that `storageState` (see `playwright.config.ts` setup → chromium dependency).
+- Do not call `login()` in every spec unless the test is about the login flow or auth setup is skipped.
+- Credentials: `DIDAXIS_EMAIL`, `DIDAXIS_PASSWORD`, `DIDAXIS_URL` from `.env`.
+
+## Page Objects
+
+Follow `.cursor/skills/pom-conventions/SKILL.md`.
+
+- One POM per page or component under `pages/`; tests import and instantiate with `new XxxPage(page)`.
+- Locators: readonly constructor fields; priority `getByRole` → `getByLabel` / `getByPlaceholder` → `getByText` → `getByTestId` (comment if needed).
+- Action methods only; all `expect(...)` in specs. No `waitForTimeout` in POMs.
+
+## Locators
+
+Role- and label-based; never CSS or XPath; avoid brittle exact text when a role+name works.
+
+```typescript
+// ❌ BAD
+page.locator('.btn-primary').click();
+page.getByText('Save').first().click();
+
+// ✅ GOOD
+page.getByRole('button', { name: 'Save' }).click();
+page.getByLabel('Program name').fill(name);
+```
+
+Disambiguate duplicates with `.filter({ hasText })`, not `.first()`.
+
+## Data & cleanup
+
+Follow `.cursor/skills/api-cleanup/SKILL.md`.
+
+- Unique names: append `Date.now()` (or similar) so parallel runs do not collide.
+- Import `test` from `fixtures/cleanup.fixture.ts` when a test creates programs; call `trackProgram(uuid)` after `POST /api/programs` returns **201** (`data.id`).
+- Teardown is API `DELETE`, not UI; never delete data the test did not create.

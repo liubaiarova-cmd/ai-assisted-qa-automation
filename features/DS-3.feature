@@ -7,124 +7,145 @@ Feature: DS-3 Program name validation and duplicate prevention
   # Happy paths
 
   @TC-001 @smoke
-  Scenario: Program name with ampersand, hyphen, and accented characters is accepted
-    Given I am on the program creation form
-    When I enter "Informatique & IA - Niveau 2" as the program name
-    And I fill in Description with "Programme bilingue en informatique et intelligence artificielle"
+  Scenario: Special characters in Program Name are accepted
+    Given I am logged in as admin
+    And I am on the program creation form
+    When I fill in Program Name with "Informatique & IA - Niveau 2"
+    And I fill in Description with "Programme avec caractères spéciaux"
     And I click Create
-    Then the program is created successfully
+    Then the modal closes
     And the program list shows "Informatique & IA - Niveau 2"
 
   @TC-002
-  Scenario: A simple valid program name is accepted
+  Scenario: Program Name is the only required field
     Given I am on the program creation form
-    When I enter "Mobile Development 2026" as the program name
-    And I fill in Description with "iOS and Android curriculum"
+    When I fill in Program Name with "Informatique & IA - Niveau 2"
+    And I leave Description empty
     And I click Create
-    Then the program is created successfully
-    And the program list shows "Mobile Development 2026"
+    Then the modal closes
+    And the program list shows "Informatique & IA - Niveau 2"
 
   # Negative
 
   @TC-003 @smoke
-  Scenario: Whitespace-only program name is trimmed and rejected
+  Scenario: Whitespace-only Program Name is treated as empty
     Given I am on the program creation form
-    When I enter "   " as the program name
-    And I click Create
-    Then the form is not submitted
-    And no program is created
+    When I fill in Program Name with "   "
+    And I fill in Description with "Valid description"
+    Then the Create button is disabled
+    And the form is not submitted
+    And the program list does not show a program named "   "
 
-  @TC-004 @smoke
-  Scenario: Duplicate program name is rejected on create
-    Given a program "Web Development 2026" already exists
-    When I try to create a new program with the name "Web Development 2026"
-    Then I see an error indicating the name already exists
-    And the program list contains only one "Web Development 2026"
-
-  @TC-005
-  Scenario: Empty program name is rejected
+  @TC-004
+  Scenario: Empty Program Name keeps Create disabled
     Given I am on the program creation form
     When I leave the Program Name field empty
-    And I fill in Description with "Description without a program name"
-    Then the form is not submitted
-    And no program is created
+    And I fill in Description with "Valid description"
+    Then the Create button is disabled
+    And the form is not submitted
 
-  @TC-006
-  Scenario: A rejected duplicate does not add a second program
+  @TC-005 @smoke
+  Scenario: Duplicate program name is rejected
     Given a program "Web Development 2026" already exists
-    When I try to create a new program with the name "Web Development 2026"
-    And I see an error indicating the name already exists
-    Then after I refresh the Programs page
-    And the program list still contains only one "Web Development 2026"
+    And I am on the program creation form
+    When I fill in Program Name with "Web Development 2026"
+    And I fill in Description with "Another description"
+    And I click Create
+    Then I see an error indicating the name already exists
+    And the New Program modal stays open
+    And the program list contains only one "Web Development 2026"
 
   # Edge cases
 
-  @TC-007
-  Scenario: Leading and trailing spaces around a valid name are trimmed
-    Given I am on the program creation form
-    When I enter "  Unique Program Alpha  " as the program name
-    And I fill in Description with "Trim test program"
-    And I click Create
-    Then the program is created successfully
-    And the program list shows "Unique Program Alpha"
-
-  @TC-008
-  Scenario: A case-variant of an existing name is treated as a duplicate
+  @TC-006
+  Scenario: Leading and trailing spaces do not create a second program
     Given a program "Web Development 2026" already exists
-    When I try to create a new program with the name "web development 2026"
+    And I am on the program creation form
+    When I fill in Program Name with "  Web Development 2026  "
+    And I fill in Description with "Padded duplicate"
+    And I click Create
     Then I see an error indicating the name already exists
     And the program list contains only one "Web Development 2026"
 
-  @TC-009
-  Scenario: Multiple internal spaces in a program name are preserved
-    Given I am on the program creation form
-    When I enter "Full   Stack   Engineering" as the program name
-    And I fill in Description with "Engineering track with spaced name"
+  @TC-007
+  Scenario: Case-variant duplicate name is rejected
+    Given a program "Web Development 2026" already exists
+    And I am on the program creation form
+    When I fill in Program Name with "web development 2026"
+    And I fill in Description with "Case variant"
     And I click Create
-    Then the program is created successfully
-    And the program list shows "Full   Stack   Engineering"
+    Then I see an error indicating the name already exists
+    And the program list contains only one "Web Development 2026"
 
-  @TC-010
-  Scenario: Program name at the maximum allowed length is accepted
+  @TC-008
+  Scenario: Single-character Program Name is accepted
     Given I am on the program creation form
-    When I enter a program name of the maximum allowed length
+    When I fill in Program Name with "A"
+    And I fill in Description with "Single character name"
+    And I click Create
+    Then the modal closes
+    And the program list shows "A"
+
+  @TC-009
+  Scenario: Program Name at 100 characters is accepted
+    Given I am on the program creation form
+    When I fill in Program Name with "NameLimit100_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
     And I fill in Description with "Boundary test for name length"
     And I click Create
-    Then the program is created successfully
+    Then the modal closes
+    And the program list shows "NameLimit100_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+  @TC-010
+  Scenario: Program Name over 100 characters is rejected
+    Given I am on the program creation form
+    When I fill in Program Name with "NameLimit100_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    And I fill in Description with "Over limit test"
+    Then the Create button is disabled or I see a length validation message
+    And no new program is created
 
   @TC-011
-  Scenario: Program name longer than the maximum is rejected
-    Given I am on the program creation form
-    When I enter a program name one character over the maximum allowed length
-    And I fill in Description with "Over limit test"
-    Then the form is not submitted
-    And no program is created
+  Scenario: Internal spaces are preserved and are not a duplicate of a collapsed name
+    Given a program "Web Development 2026" already exists
+    And I am on the program creation form
+    When I fill in Program Name with "Web  Development  2026"
+    And I fill in Description with "Internal spaces"
+    And I click Create
+    Then the modal closes
+    And the program list shows "Web  Development  2026"
+    And the program list still shows "Web Development 2026"
 
   @TC-012
-  Scenario: Parentheses, quotes, and a hash in a program name are accepted
+  Scenario: HTML in Program Name is stored as text and not executed
     Given I am on the program creation form
-    When I enter "DevOps (2026) \"Fast Track\" #1" as the program name
-    And I fill in Description with "Special character name test"
+    When I fill in Program Name with "IA <img src=x onerror=alert(1)>"
+    And I fill in Description with "Markup in the name"
     And I click Create
-    Then the program is created successfully
-    And the program list shows "DevOps (2026) \"Fast Track\" #1"
-
-  @TC-013
-  Scenario: A deleted program name can be used again
-    Given no program named "Web Development 2026" currently exists
-    And a program with that name was previously deleted
-    When I enter "Web Development 2026" as the program name
-    And I fill in Description with "Reused name after delete"
-    And I click Create
-    Then the program is created successfully
-    And the program list shows "Web Development 2026"
+    Then the modal closes
+    And no script or HTML injection runs in the browser
+    And the program list shows "IA <img src=x onerror=alert(1)>"
 
 # Ambiguities and gaps in DS-3 acceptance criteria:
-# - The ticket names three scenarios only: whitespace-only rejection, special characters ("Informatique & IA - Niveau 2"), and duplicate "Web Development 2026".
-# - "Other required fields" are not named. Description is used here because the create form exposes it; confirm whether Description is required.
-# - Whitespace AC says the form is not submitted after click. It does not say whether Create stays disabled or an error is shown.
-# - Duplicate AC does not define error copy, inline vs toast, or whether the message includes the program name.
-# - Duplicate AC is create-only. Rename-to-existing on edit is out of scope until confirmed.
-# - Case sensitivity (TC-008), internal-space preservation (TC-009), and reuse after delete (TC-013) are not specified.
-# - Maximum name length is not specified, so TC-010 and TC-011 cannot use a concrete limit until engineering confirms it.
-# - Uniqueness scope (global vs tenant) and whether soft-deleted names stay reserved are not specified.
+# - AC1 says "When I click Create". On the live form, Create is disabled for "   ", so the click cannot happen. TC-003 treats that disabled state as "form is not submitted".
+# - AC1 says the name is trimmed and treated as empty. The field still displays the spaces; only submission is blocked. No validation message is shown.
+# - AC3 expects an error that the name already exists. Live create of an exact duplicate returned HTTP 201 "Program created", closed the modal, showed no alert, and added a second row. Related bugs include DS-13, DS-153, and DS-201.
+# - Case folding and trim-before-uniqueness are not in the ACs. TC-006 and TC-007 state the data-integrity expectation from the story. They were not submitted during recon.
+# - Max length is not in the ACs. TC-009 and TC-010 assume 100 characters from related defects (DS-151, DS-51, DS-199). The Program Name input has no maxlength. Create stayed enabled for both a 100-character and a 101-character value. The 101-character value was not submitted.
+# - Description has no required marker. AC2 says "fill other required fields"; the only required field on the form is Program Name. TC-002 covers create with an empty Description.
+# - No AC for non-admin access, success toast, double-click idempotency, or edit-form uniqueness. Edit is covered by DS-2.
+# - "Web Development 2026" in AC3 is a shared example name. Automation should use a unique suffix so it does not collide with existing rows, while still asserting exact-name uniqueness.
+#
+# UI recon:
+# - Tool: Playwright MCP (user-Playwright)
+# - Date: 2026-10-28
+# - Base URL: https://test.didaxis.studio
+# - Paths: /login, /programs
+# - Login: textbox "Email", textbox "Password", button "Sign In"
+# - Open form: button "+ New Program"
+# - Dialog: role dialog, heading "New Program"
+# - Program Name: textbox "Program Name", visible label "Program Name *", placeholder "e.g. Computer Science BSc", required, no maxlength
+# - Description: textbox "Description", placeholder "Brief description", not required
+# - Actions: button "Cancel", button "Create" (disabled until Program Name has non-whitespace text), unnamed banner close button
+# - Also in the dialog: button "Show AI Generation Config", Total Program Hours, Default Session Hours (default 4), Default Exam Hours (default 3)
+# - List: table row, button "Edit <name>", button "Delete <name>"
+# - Successful create: POST /api/programs 201, message "Program created", modal closes, row is attached
+# - Recon created two rows named "Informatique & IA - Niveau 2 1793236387832" while confirming special characters and the duplicate response. They were not deleted in this pass.

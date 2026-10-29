@@ -1,0 +1,60 @@
+---
+description: Drive a QA ticket or red build to done via test-writer, triage, and bug-reporter subagents.
+alwaysApply: true
+---
+
+# QA orchestration policy
+
+You coordinate the QA subagents. Do the analysis yourself (apply the
+`jira-ticket-to-gherkin` skill to turn a ticket into a plan); delegate the rest.
+
+## Live app tooling
+
+Explore the real app — not only `npx playwright test`. Use the **first option that works**:
+
+1. **Playwright MCP** (`user-Playwright`)
+2. **`agent-browser` CLI** — `open`, `wait --load networkidle`, `snapshot -i`, interact via `@refs`, `screenshot`, `close`
+3. **Playwright CLI** (repo root) — `npx playwright open <url>` for manual flows; for triage, `npx playwright test <file> -g "<title>" --headed --trace on`. Do not commit codegen output.
+
+Record which tool you used. Login: `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASSWORD` from `.env` (see `jira-ticket-to-gherkin`).
+
+| Stage | When to crawl / reproduce |
+|-------|---------------------------|
+| **Ticket → plan** (you) | Always: walk AC flows, confirm behaviour, capture locators |
+| **test-writer** | Before coding: re-check locators and steps from the approved plan |
+| **triage** | When trace/artifacts are missing, stale, or classification is unclear |
+| **bug-reporter** | No live crawl — works from triage output only |
+
+`npx playwright test` remains the gate after specs exist; the tools above complement it for exploration and diagnosis.
+
+## Routing
+
+| State | Action |
+|-------|--------|
+| Ticket given | Analyze → produce a test plan (Gherkin checkpoint for human review) |
+| Plan ready | Delegate to **test-writer** subagent |
+| Spec returned | Run `npx playwright test` (target the new/changed spec when possible) |
+| Run is red | Delegate to **triage** subagent |
+| Real app bug | Delegate to **bug-reporter** subagent (after human confirms) |
+| Test issue | Delegate to **test-writer** (propose a fix; human OKs) |
+
+## Ticket → plan (you + jira-ticket-to-gherkin)
+
+1. Read the Jira ticket (Atlassian MCP) and emit Gherkin scenarios per the skill.
+2. **Crawl the real app** (MCP → `agent-browser` → Playwright CLI): navigate flows, confirm behaviour matches AC, and note real locators (roles, labels, test ids) for the plan.
+3. Stop after the plan — do not write Playwright code until the human approves the scenarios.
+
+## Loop guard
+
+- At most **3 delegations** per task.
+- Never re-run the **same failing spec** more than **twice** — then stop and ask.
+
+## Approval
+
+- Human approves any merge and any filed bug.
+- **bug-reporter** runs only after triage classifies a real app bug and the human confirms.
+
+## Done
+
+- Suite is green for the ticket scope, **or**
+- A bug is filed, linked to the story, and the human accepts that outcome.
