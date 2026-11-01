@@ -1,0 +1,51 @@
+---
+description: Deterministic programs-flow edge cases via page.route — live UI copy, one tag, POM actions.
+globs: tests/**/*.spec.ts
+alwaysApply: false
+---
+
+# Programs network edge cases
+
+Use `page.route` only to force the programs response whose **UI reaction** is the subject of that test. Fulfill `/api/programs` (list `GET`, create `POST`) or `/api/programs/:id` (`PATCH` save). `route.continue()` every other method. Never fulfill `/api/auth/*`.
+
+Never mock the call the test is actually verifying. A test that checks a real create, update, or list does not fulfill that request. Do not assert the status code you fulfilled. `page.unroute` before a later step that must hit the real API (empty-list setup, then a real create).
+
+Register the route before the action that sends the request. UI actions go through `ProgramsPage`, `NewProgramModal`, and `LoginPage` only. `page.route` / `page.unroute` stay in the spec. Success helpers wait for **201** or a closed dialog (`createProgram`, `submitCreate`) — do not use them for a non-success fulfillment. Use `attemptCreate` or `clickCreate(track, { required: false })` for a failed create, and `clickSave` for a failed update. If `goto()` waits for a table or empty state the error screen never shows, propose a POM change; do not replace it with raw locators or `page.goto`.
+
+One Playwright tag per test, a single string: `@programs-save-<status>`, `@programs-list-<status>`, `@programs-list-empty`, or `@programs-list-malformed`. Not an array.
+
+Before any assertion, open the real programs page (Playwright MCP → `agent-browser` → Playwright CLI) and read the error and empty-state copy the app renders. Assert that text. If a case renders nothing, say so and assert the shell stayed up (no crash, programs URL still loaded). Do not invent strings. Do not reuse another status's copy.
+
+Each row is its own test. List body the app expects is JSON `{ "data": [ ... ] }`. Empty list fulfills **200** `{ "data": [] }`.
+
+| Call | Fulfill | Assert |
+|---|---|---|
+| Save (`POST` or `PATCH`) | **503** | UI error state, live copy |
+| Save | **401, 403, 404, 501, 502, 400, 409, 422, 429, 500, 504, 408** | UI error state, or the live redirect; copy from the page |
+| Save | **300** | App does not crash; record the rendered copy or "renders nothing" |
+| `GET` list | **200** `{ "data": [] }` | Empty-state message, live copy |
+| `GET` list | **200** non-JSON body | App does not crash |
+| `GET` list | **200** JSON whose `data` is not an array (`{ "data": {} }`) | App does not crash |
+| `GET` list | **401, 403, 404, 501, 502, 503, 300, 204, 400, 500, 504, 408** | What the page actually shows (error, redirect, empty, or nothing). A failed list must not be asserted as the empty state unless recon showed that |
+
+```typescript
+test('save surfaces the unavailable error', { tag: '@programs-save-503' }, async ({ page, trackProgram }) => {
+  const programsPage = new ProgramsPage(page);
+  await programsPage.goto();
+  await programsPage.openNewProgramForm();
+  await programsPage.modal.fill(name, description);
+  await page.route(/\/api\/programs$/, async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Service Unavailable' }),
+    });
+  });
+  await programsPage.modal.clickCreate(trackProgram, { required: false });
+  // Assert the error string read from the live page. If it rendered nothing, say so.
+});
+```

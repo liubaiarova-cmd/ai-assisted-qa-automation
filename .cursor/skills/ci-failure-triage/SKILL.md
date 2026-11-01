@@ -22,6 +22,8 @@ description: When a CI run is red, pull the run's logs and the playwright-report
 - Never merge a fix automatically — propose, a human approves.
 - For a real defect, reuse the bug-reporter skill and link the story.
 - The diagnosis must name the source location and cause, not just the symptom.
+- Do not propose `workers: 1` or `retries` above 2. CI already retries twice (`process.env.CI ? 2 : 0`) and records `trace: 'on-first-retry'`, so the first attempt may have no trace.
+- A relative-timestamp mismatch is a test issue: propose `page.clock.install({ time })` before navigation. Do not propose a sleep.
 
 ## Resolve the failed run
 
@@ -70,7 +72,7 @@ Copy and track:
 | Outcome | Action |
 |---------|--------|
 | **Product defect** | Follow [jira-bug-reporter](../jira-bug-reporter/SKILL.md). Include CI run id and artifact paths in the Bug description. |
-| **Test issue** | Draft a minimal patch (spec and/or POM). Do not merge; leave for review. |
+| **Test issue** | Draft a minimal patch (spec and/or POM). Do not merge; leave for review. Locator and wait fixes use user-facing locators, web-first `expect(locator).toBeVisible()` / `.toBeEnabled()` / `.toHaveText()` instead of `waitForTimeout` or `expect(await locator.isVisible()).toBe(true)`, and `.filter({ hasText })` instead of `.first()`. Do not change what the assertion checks. |
 | **Env / credentials / flake** | Explain in the PR comment. Do not file a product Bug. |
 
 ## PR comment template

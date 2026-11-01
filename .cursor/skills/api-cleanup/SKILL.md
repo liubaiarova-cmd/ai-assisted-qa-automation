@@ -5,7 +5,8 @@ description: >
   Use whenever generating or reviewing tests that create programs (or
   any persistent records) in Didaxis, so test data does not accumulate.
   Apply this to every test that creates data — even if cleanup isn't
-  explicitly requested.
+  explicitly requested — including programs specs that fulfill
+  /api/programs with page.route and then create a real program.
 ---
 
 # API Cleanup for Test Data
@@ -26,6 +27,7 @@ its UUID and delete it via the API afterwards.
    `DELETE /api/programs/<uuid>` with a Bearer token from
    `process.env.DIDAXIS_API_TOKEN`.
 5. Never hardcode the token. Never delete data the test did not create.
+6. A `page.route` fulfillment does not create a program. Call `trackProgram` only after a real `POST /api/programs` returns **201**. Do not track an id that existed only in a mock body. If the spec `unroute`s and then creates, track that real id.
 
 ## Reference
 

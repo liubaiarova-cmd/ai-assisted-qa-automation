@@ -21,11 +21,15 @@ Record which tool you used. Login: `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASS
 | Stage | When to crawl / reproduce |
 |-------|---------------------------|
 | **Ticket → plan** (you) | Always: walk AC flows, confirm behaviour, capture locators |
-| **test-writer** | Before coding: re-check locators and steps from the approved plan |
+| **test-writer** | Before coding: re-check locators and steps from the approved plan. For programs network edge cases, read the live error and empty-state copy before assertions (`programs-network-edge-cases`). For the programs page, add the WCAG axe scan and the keyboard dialog check (`a11y-checks`); violations are reported and must not turn CI red |
 | **triage** | When trace/artifacts are missing, stale, or classification is unclear |
 | **bug-reporter** | No live crawl — works from triage output only |
 
 `npx playwright test` remains the gate after specs exist; the tools above complement it for exploration and diagnosis.
+
+## Playwright config
+
+If you touch `playwright.config.ts`, keep `fullyParallel: true`, `retries: process.env.CI ? 2 : 0` (never above 2), `baseURL: process.env.DIDAXIS_URL`, `trace: 'on-first-retry'`, and the setup project plus chromium `storageState` dependency. Do not set `workers: 1`. Pin `locale: 'en-CA'` and `timezoneId: 'America/Toronto'`.
 
 ## Routing
 
@@ -41,7 +45,7 @@ Record which tool you used. Login: `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASS
 ## Ticket → plan (you + jira-ticket-to-gherkin)
 
 1. Read the Jira ticket (Atlassian MCP) and emit Gherkin scenarios per the skill.
-2. **Crawl the real app** (MCP → `agent-browser` → Playwright CLI): navigate flows, confirm behaviour matches AC, and note real locators (roles, labels, test ids) for the plan.
+2. **Crawl the real app** (MCP → `agent-browser` → Playwright CLI): navigate flows, confirm behaviour matches AC, and note real locators for the plan: `getByRole` → `getByLabel` / `getByPlaceholder` → `getByText` → `getByTestId` (escape hatch only — say why). No CSS or XPath. Disambiguate with `.filter({ hasText })`, not `.first()`.
 3. Stop after the plan — do not write Playwright code until the human approves the scenarios.
 
 ## Loop guard
@@ -49,10 +53,19 @@ Record which tool you used. Login: `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASS
 - At most **3 delegations** per task.
 - Never re-run the **same failing spec** more than **twice** — then stop and ask.
 
-## Approval
+## Guardrails
 
-- Human approves any merge and any filed bug.
+- A human approves **every merge** and **every filed bug** — no exceptions.
 - **bug-reporter** runs only after triage classifies a real app bug and the human confirms.
+- **No subagent edits application source.** Fixes to app code are proposed, never applied.
+
+Blast radius per specialist:
+
+| Specialist | Blast radius |
+|----|----|
+| **test-writer** | Writes files under `tests/` only; page-object changes go back to you as proposals. |
+| **triage** | Read-only: reads CI logs, artifacts, and repo; returns a diagnosis, changes nothing. |
+| **bug-reporter** | Read-only on the repo; its only side effect is one Jira bug linked to the story. |
 
 ## Done
 

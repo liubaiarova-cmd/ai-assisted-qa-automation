@@ -7,7 +7,8 @@ description: >
   getByLabel or getByPlaceholder, then getByText, then getByTestId. Disambiguate
   with filter({ hasText }). Action methods only; no assertions or waitForTimeout
   in pages/. Use when creating, reviewing, or refactoring page objects under
-  pages/, or when a Playwright test needs UI actions.
+  pages/, or when a Playwright test needs UI actions, including a programs
+  spec that fulfills /api/programs with page.route.
 ---
 
 # Page Object conventions
@@ -27,6 +28,10 @@ No assertions inside Page Objects. All expect(...) calls live in the test files,
 Compose POMs when a page contains distinct components — e.g. ProgramsPage holds a NewProgramModal instance.
 
 Import POMs at the top of each spec; instantiate with new XxxPage(page).
+
+`page.route` / `page.unroute` stay in the spec. Do not add route helpers to a POM. Programs clicks, fills, and navigation still go through ProgramsPage, NewProgramModal, or LoginPage. Methods that wait for HTTP 201 or a closed dialog (`submitCreate`, `createProgram`) are for a real success response only. Failed create fulfillments use `attemptCreate` or `clickCreate(track, { required: false })`; a failed update uses `clickSave`.
+
+Accessibility specs use those POM locators too. The programs keyboard check tabs to `newProgramButton`, asserts `toBeFocused()`, presses Enter, and asserts `modal.dialog` is visible. Do not put role locators for that flow inline in the spec.
 
 ## Output
 
