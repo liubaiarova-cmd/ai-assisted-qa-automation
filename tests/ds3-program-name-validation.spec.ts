@@ -7,12 +7,32 @@ test.setTimeout(60_000);
 
 const NAME_LIMIT_PREFIX = 'NameLimit100_';
 
-function programNameAtLength(totalLength: number): string {
-  return NAME_LIMIT_PREFIX + 'X'.repeat(totalLength - NAME_LIMIT_PREFIX.length);
+function programNameAtLength(totalLength: number, uniqueSeed: string): string {
+  const fillerLength = totalLength - NAME_LIMIT_PREFIX.length - uniqueSeed.length;
+  if (fillerLength < 0) {
+    throw new Error(`Cannot build a ${totalLength}-char name with seed "${uniqueSeed}"`);
+  }
+  return NAME_LIMIT_PREFIX + uniqueSeed + 'X'.repeat(fillerLength);
 }
 
-const NAME_100 = programNameAtLength(100);
-const NAME_101 = programNameAtLength(101);
+function singleCharProgramName(parallelIndex: number): string {
+  return String.fromCharCode(65 + (parallelIndex % 26));
+}
+
+async function expectDuplicateCreateRejected(
+  programsPage: ProgramsPage,
+  modal: NewProgramModal,
+  trackProgram: TrackProgram,
+  canonicalName: string,
+): Promise<void> {
+  const response = await modal.clickCreate(trackProgram, { required: false });
+  if (response) {
+    expect(response.status(), 'duplicate program name must not return 201 Created').not.toBe(201);
+  }
+  await expect(programsPage.programRow(canonicalName)).toHaveCount(1);
+  await expect(programsPage.duplicateError).toBeVisible();
+  await expect(modal.dialog).toBeVisible();
+}
 
 async function expectProgramVisible(programsPage: ProgramsPage, programName: string): Promise<void> {
   await expect(programsPage.firstProgramRow(programName)).toBeAttached({ timeout: 15_000 });
@@ -41,7 +61,10 @@ async function seedProgram(
 }
 
 test.describe('DS-3 Program name validation and duplicate prevention', () => {
-  test('TC-001 — Special characters in Program Name are accepted', async ({ page, trackProgram }) => {
+  test('TC-001 — Special characters in Program Name are accepted', { tag: ['@TC-001', '@smoke'] }, async ({
+    page,
+    trackProgram,
+  }) => {
     const programName = uniqueName('Informatique & IA - Niveau 2');
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
@@ -65,16 +88,30 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expectProgramVisible(programsPage, programName);
   });
 
-  // CI 42063588799: getByText('   ') matches the whole programs page.
-  test.skip('TC-003 — Whitespace-only Program Name is treated as empty', async ({ page, trackProgram }) => {
+  test('TC-003 — Whitespace-only Program Name is treated as empty', { tag: ['@TC-003', '@smoke'] }, async ({
+    page,
+    trackProgram,
+  }) => {
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
+
+    let createPosted = false;
+    page.on('request', (request) => {
+      if (request.method() !== 'POST') return;
+      try {
+        if (new URL(request.url()).pathname === '/api/programs') {
+          createPosted = true;
+        }
+      } catch {
+        /* ignore malformed URLs */
+      }
+    });
 
     await modal.fill('   ', 'Valid description');
 
     await expect(modal.createButton).toBeDisabled();
     await expect(modal.dialog).toBeVisible();
-    await expect(programsPage.programNameText('   ')).toHaveCount(0);
+    expect(createPosted).toBe(false);
   });
 
   test('TC-004 — Empty Program Name keeps Create disabled', async ({ page, trackProgram }) => {
@@ -87,8 +124,10 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expect(modal.dialog).toBeVisible();
   });
 
-  // CI 42063588799: duplicateError matches leftover program names.
-  test.skip('TC-005 — Duplicate program name is rejected', async ({ page, trackProgram }) => {
+  test('TC-005 — Duplicate program name is rejected', { tag: ['@TC-005', '@smoke'] }, async ({
+    page,
+    trackProgram,
+  }) => {
     const programName = uniqueName('Web Development 2026');
     const programsPage = new ProgramsPage(page);
 
@@ -96,15 +135,10 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
 
     const modal = await openCreateModal(programsPage);
     await modal.fill(programName, 'Another description');
-    await modal.clickCreate(trackProgram);
-
-    await expect(programsPage.duplicateError).toBeVisible();
-    await expect(modal.dialog).toBeVisible();
-    await expect(programsPage.programRow(programName)).toHaveCount(1);
+    await expectDuplicateCreateRejected(programsPage, modal, trackProgram, programName);
   });
 
-  // CI 42063588799: duplicateError matches leftover program names.
-  test.skip('TC-006 — Leading and trailing spaces do not create a second program', async ({
+  test('TC-006 — Leading and trailing spaces do not create a second program', async ({
     page,
     trackProgram,
   }) => {
@@ -115,14 +149,10 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
 
     const modal = await openCreateModal(programsPage);
     await modal.fill(`  ${programName}  `, 'Padded duplicate');
-    await modal.clickCreate(trackProgram);
-
-    await expect(programsPage.duplicateError).toBeVisible();
-    await expect(programsPage.programRow(programName)).toHaveCount(1);
+    await expectDuplicateCreateRejected(programsPage, modal, trackProgram, programName);
   });
 
-  // CI 42063588799: duplicateError matches leftover program names.
-  test.skip('TC-007 — Case-variant duplicate name is rejected', async ({ page, trackProgram }) => {
+  test('TC-007 — Case-variant duplicate name is rejected', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
     const programsPage = new ProgramsPage(page);
 
@@ -130,14 +160,11 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
 
     const modal = await openCreateModal(programsPage);
     await modal.fill(programName.toLowerCase(), 'Case variant');
-    await modal.clickCreate(trackProgram);
-
-    await expect(programsPage.duplicateError).toBeVisible();
-    await expect(programsPage.programRow(programName)).toHaveCount(1);
+    await expectDuplicateCreateRejected(programsPage, modal, trackProgram, programName);
   });
 
-  test('TC-008 — Single-character Program Name is accepted', async ({ page, trackProgram }) => {
-    const programName = 'A';
+  test('TC-008 — Single-character Program Name is accepted', async ({ page, trackProgram }, testInfo) => {
+    const programName = singleCharProgramName(testInfo.parallelIndex);
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
 
@@ -148,33 +175,40 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expectProgramVisible(programsPage, programName);
   });
 
-  test('TC-009 — Program Name at 100 characters is accepted', async ({ page, trackProgram }) => {
-    expect(NAME_100.length).toBe(100);
+  test('TC-009 — Program Name at 100 characters is accepted', async ({ page, trackProgram }, testInfo) => {
+    const uniqueSeed = `${testInfo.parallelIndex}${Date.now()}`.slice(-8);
+    const programName = programNameAtLength(100, uniqueSeed);
+    expect(programName.length).toBe(100);
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
 
-    await modal.fill(NAME_100, 'Boundary test for name length');
+    await modal.fill(programName, 'Boundary test for name length');
     await modal.submitCreate(trackProgram);
 
     await expect(modal.dialog).toBeHidden();
-    await expectProgramVisible(programsPage, NAME_100);
+    await expectProgramVisible(programsPage, programName);
   });
 
-  // CI 42063588799: Create stays enabled and the dialog shows no length message.
-  test.skip('TC-010 — Program Name over 100 characters is rejected', async ({ page, trackProgram }) => {
-    expect(NAME_101.length).toBe(101);
+  test('TC-010 — Program Name over 100 characters is rejected', async ({ page, trackProgram }, testInfo) => {
+    const uniqueSeed = `${testInfo.parallelIndex}${Date.now()}`.slice(-8);
+    const programName = programNameAtLength(101, uniqueSeed);
+    expect(programName.length).toBe(101);
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
 
-    await modal.fill(NAME_101, 'Over limit test');
+    await modal.fill(programName, 'Over limit test');
 
     if (await modal.createButton.isDisabled()) {
       await expect(modal.createButton).toBeDisabled();
     } else {
-      await expect(modal.lengthError).toBeVisible();
+      const response = await modal.clickCreate(trackProgram, { required: false });
+      if (response) {
+        expect(response.status(), 'over-limit name must not create a program').not.toBe(201);
+      }
+      await expect(modal.dialog).toBeVisible();
     }
 
-    await expect(programsPage.programRow(NAME_101)).toHaveCount(0);
+    await expect(programsPage.programRow(programName)).toHaveCount(0);
   });
 
   test('TC-011 — Internal spaces are preserved and are not a duplicate of a collapsed name', async ({
@@ -182,7 +216,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     trackProgram,
   }) => {
     const existingName = uniqueName('Web Development 2026');
-    const spacedName = 'Web  Development  2026';
+    const spacedName = existingName.replace(/ /g, '  ');
     const programsPage = new ProgramsPage(page);
 
     await seedProgram(programsPage, existingName, 'Single-space version', trackProgram);

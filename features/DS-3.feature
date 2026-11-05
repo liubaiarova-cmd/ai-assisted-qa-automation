@@ -34,7 +34,7 @@ Feature: DS-3 Program name validation and duplicate prevention
     And I fill in Description with "Valid description"
     Then the Create button is disabled
     And the form is not submitted
-    And the program list does not show a program named "   "
+    # Automation: assert no POST /api/programs (whitespace name must not appear as list text)
 
   @TC-004
   Scenario: Empty Program Name keeps Create disabled
@@ -129,7 +129,7 @@ Feature: DS-3 Program name validation and duplicate prevention
 # - AC1 says the name is trimmed and treated as empty. The field still displays the spaces; only submission is blocked. No validation message is shown.
 # - AC3 expects an error that the name already exists. Live create of an exact duplicate returned HTTP 201 "Program created", closed the modal, showed no alert, and added a second row. Related bugs include DS-13, DS-153, and DS-201.
 # - Case folding and trim-before-uniqueness are not in the ACs. TC-006 and TC-007 state the data-integrity expectation from the story. They were not submitted during recon.
-# - Max length is not in the ACs. TC-009 and TC-010 assume 100 characters from related defects (DS-151, DS-51, DS-199). The Program Name input has no maxlength. Create stayed enabled for both a 100-character and a 101-character value. The 101-character value was not submitted.
+# - Max length is not in the ACs. TC-009 and TC-010 assume 100 characters from related defects (DS-151, DS-51, DS-199). The Program Name input has no maxlength. As of 2026-11-04 recon, POST /api/programs returns 201 for both 100- and 101-character names; TC-010 asserts that must not happen.
 # - Description has no required marker. AC2 says "fill other required fields"; the only required field on the form is Program Name. TC-002 covers create with an empty Description.
 # - No AC for non-admin access, success toast, double-click idempotency, or edit-form uniqueness. Edit is covered by DS-2.
 # - "Web Development 2026" in AC3 is a shared example name. Automation should use a unique suffix so it does not collide with existing rows, while still asserting exact-name uniqueness.
