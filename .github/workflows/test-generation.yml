@@ -41,6 +41,7 @@ jobs:
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           agent -p --force --trust --output-format text "$(cat <<'EOF'
@@ -58,7 +59,7 @@ jobs:
 
           Never merge a pull request. Never close or transition the ticket. A human approves every merge and every filed bug.
 
-          Use ATLASSIAN_API_TOKEN for Jira. Use GITHUB_TOKEN for git and pull requests.
+          Use ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN for Jira Cloud REST (not browser login). Use GITHUB_TOKEN for git and pull requests.
           EOF
           )"
 
