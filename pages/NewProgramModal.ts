@@ -83,4 +83,9 @@ export class NewProgramModal {
   async clickSave(): Promise<void> {
     await this.saveButton.click();
   }
+
+  async submitSave(): Promise<void> {
+    await this.saveButton.click();
+    await this.dialog.waitFor({ state: 'hidden', timeout: 45_000 });
+  }
 }

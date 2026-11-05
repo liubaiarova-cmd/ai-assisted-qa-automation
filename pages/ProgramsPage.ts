@@ -57,6 +57,11 @@ export class ProgramsPage {
     await this.waitForListSurface();
   }
 
+  async openProgramsShell(): Promise<void> {
+    await this.page.goto(programsUrl);
+    await this.newProgramButton.waitFor({ state: 'visible' });
+  }
+
   async waitForListSurface(): Promise<void> {
     await this.page
       .getByRole('table')
