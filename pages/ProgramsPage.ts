@@ -57,6 +57,12 @@ export class ProgramsPage {
     await this.waitForListSurface();
   }
 
+  /** Loads /programs and waits for the shell only (no table or empty-state wait). */
+  async openProgramsShell(): Promise<void> {
+    await this.page.goto(programsUrl);
+    await this.newProgramButton.waitFor({ state: 'visible' });
+  }
+
   async waitForListSurface(): Promise<void> {
     await this.page
       .getByRole('table')
@@ -95,17 +101,35 @@ export class ProgramsPage {
     await this.modal.clickCreate(trackProgram, { required: false });
   }
 
-  async confirmDelete(programName: string): Promise<void> {
-    const deleteButton = this.firstProgramRow(programName).getByRole('button', {
+  private deleteButtonFor(programName: string): Locator {
+    return this.firstProgramRow(programName).getByRole('button', {
       name: `Delete ${programName}`,
       exact: true,
     });
+  }
+
+  async confirmDelete(programName: string): Promise<string> {
+    const deleteButton = this.deleteButtonFor(programName);
     await deleteButton.scrollIntoViewIfNeeded();
     const dialogPromise = this.page.waitForEvent('dialog');
     const clickPromise = deleteButton.click();
     const dialog = await dialogPromise;
+    const dialogType = dialog.type();
     await dialog.accept();
     await clickPromise;
+    return dialogType;
+  }
+
+  async cancelDelete(programName: string): Promise<string> {
+    const deleteButton = this.deleteButtonFor(programName);
+    await deleteButton.scrollIntoViewIfNeeded();
+    const dialogPromise = this.page.waitForEvent('dialog');
+    const clickPromise = deleteButton.click();
+    const dialog = await dialogPromise;
+    const dialogType = dialog.type();
+    await dialog.dismiss();
+    await clickPromise;
+    return dialogType;
   }
 
   async openEdit(programName: string): Promise<NewProgramModal> {
