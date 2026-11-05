@@ -1,12 +1,18 @@
 ---
-description: Drive a QA ticket or red build to done via test-writer, triage, and bug-reporter subagents.
+description: How to drive one QA ticket, a backlog queue, or a red build to done by delegating to the test-writer, triage, and bug-reporter subagents.
 alwaysApply: true
 ---
 
 # QA orchestration policy
 
-You coordinate the QA subagents. Do the analysis yourself (apply the
-`jira-ticket-to-gherkin` skill to turn a ticket into a plan); delegate the rest.
+You coordinate the QA subagents. Do the analysis yourself; delegate the rest.
+
+During **analyze**, run live UI recon per jira-ticket-to-gherkin step 2 when creds are set. If creds are missing, produce Gherkin anyway and call out skipped recon.
+
+## Skills
+
+- **jira-ticket-to-gherkin** — a DS ticket into `features/<key>.feature`. Use this when a ticket exists.
+- **explore-and-generate** — no ticket. One highest-value uncovered flow into `features/explore-<area>-<flow>.feature`. Do not use it when a ticket already exists.
 
 ## Live app tooling
 
@@ -35,12 +41,32 @@ If you touch `playwright.config.ts`, keep `fullyParallel: true`, `retries: proce
 
 | State | Action |
 |-------|--------|
-| Ticket given | Analyze → produce a test plan (Gherkin checkpoint for human review) |
+| Ticket given | Analyze (Jira + UI recon) → produce a test plan (`features/<key>.feature`) |
+| No ticket / "find what we're not testing" / "explore for untested flows" / "expand coverage" | **explore-and-generate** → one feature file, then the plan-ready path |
 | Plan ready | Delegate to **test-writer** subagent |
 | Spec returned | Run `npx playwright test` (target the new/changed spec when possible) |
 | Run is red | Delegate to **triage** subagent |
 | Real app bug | Delegate to **bug-reporter** subagent (after human confirms) |
 | Test issue | Delegate to **test-writer** (propose a fix; human OKs) |
+| External backlog trigger | **Backlog mode**, one ticket at a time |
+
+## Backlog mode
+
+The agent never decides when to start. A Cursor Automation, a headless `agent -p` run, or a local batch starts the run. Do not drain this queue on your own.
+
+**Queue.** DS tickets in status "In Progress" that lack the `tests-generated` label:
+
+```
+project = DS AND status = "In Progress" AND (labels is EMPTY OR labels != "tests-generated") ORDER BY key ASC
+```
+
+**Budget.** At most 5 tickets per run. Leave the rest for the next trigger.
+
+**Per ticket.** analyze → test-writer → `npx playwright test` → triage on red. The coordinator opens one PR for that ticket (test-writer still only writes under `tests/`, `pages/`, `fixtures/`). Put the DS key in the PR title and body. When the PR is open, add the `tests-generated` label on the ticket so the next run skips it.
+
+**Repeated identical failure.** Never re-run that same failing spec again. Stop the ticket, leave its PR unmerged, add `tests-generated` if the PR is open, and move to the next ticket.
+
+**Human gate.** Never merge a PR. Never close or transition the ticket. A human approves every merge and every filed bug.
 
 ## Ticket → plan (you + jira-ticket-to-gherkin)
 
@@ -52,10 +78,11 @@ If you touch `playwright.config.ts`, keep `fullyParallel: true`, `retries: proce
 
 - At most **3 delegations** per task.
 - Never re-run the **same failing spec** more than **twice** — then stop and ask.
+- In backlog mode, stop that ticket and move on.
 
 ## Guardrails
 
-- A human approves **every merge** and **every filed bug** — no exceptions.
+- A human approves **every merge** and **every filed bug** — no exceptions. No subagent merges; bug-reporter files only after a human confirms the defect.
 - **bug-reporter** runs only after triage classifies a real app bug and the human confirms.
 - **No subagent edits application source.** Fixes to app code are proposed, never applied.
 
@@ -63,11 +90,11 @@ Blast radius per specialist:
 
 | Specialist | Blast radius |
 |----|----|
-| **test-writer** | Writes files under `tests/` only; page-object changes go back to you as proposals. |
+| **test-writer** | Writes test code only under `tests/`, `pages/`, `fixtures/`; page-object changes go back to you as proposals; no commits or PRs unless asked. |
 | **triage** | Read-only: reads CI logs, artifacts, and repo; returns a diagnosis, changes nothing. |
 | **bug-reporter** | Read-only on the repo; its only side effect is one Jira bug linked to the story. |
 
 ## Done
 
-- Suite is green for the ticket scope, **or**
-- A bug is filed, linked to the story, and the human accepts that outcome.
+- **Single ticket:** suite is green for the ticket scope, or a bug is filed, linked to the story, and the human accepts that outcome.
+- **Backlog run:** each taken ticket has one open PR linked to the DS key and the `tests-generated` label; nothing was merged or closed.
