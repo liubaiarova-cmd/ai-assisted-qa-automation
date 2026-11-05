@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { emptyProgramsMessage, programsUrl, type TrackProgram } from '../tests/support/didaxis-programs';
 import { NewProgramModal } from './NewProgramModal';
+import { SemesterPanel } from './SemesterPanel';
 
 export class ProgramsPage {
   readonly newProgramButton: Locator;
@@ -8,6 +9,7 @@ export class ProgramsPage {
   readonly emptyStateMessage: Locator;
   readonly duplicateError: Locator;
   readonly modal: NewProgramModal;
+  readonly semesterPanel: SemesterPanel;
 
   constructor(private readonly page: Page) {
     this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
@@ -15,6 +17,7 @@ export class ProgramsPage {
     this.emptyStateMessage = page.getByText(emptyProgramsMessage);
     this.duplicateError = page.getByText(/already|duplicate|exists|in use/i);
     this.modal = new NewProgramModal(page);
+    this.semesterPanel = new SemesterPanel(page);
   }
 
   async filterControl(): Promise<Locator | null> {
@@ -106,6 +109,14 @@ export class ProgramsPage {
     const dialog = await dialogPromise;
     await dialog.accept();
     await clickPromise;
+  }
+
+  async openProgram(programName: string): Promise<SemesterPanel> {
+    const name = this.programRow(programName).getByText(programName, { exact: true });
+    await name.scrollIntoViewIfNeeded();
+    await name.click();
+    await this.semesterPanel.heading(programName).waitFor({ state: 'visible', timeout: 10_000 });
+    return this.semesterPanel;
   }
 
   async openEdit(programName: string): Promise<NewProgramModal> {
