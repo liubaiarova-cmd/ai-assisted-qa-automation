@@ -51,6 +51,15 @@ export class ProgramsPage {
     await this.firstProgramRow(programName).scrollIntoViewIfNeeded();
   }
 
+  async openPrograms(): Promise<void> {
+    await this.page.goto(programsUrl);
+  }
+
+  async openProgramsShell(): Promise<void> {
+    await this.page.goto(programsUrl);
+    await this.newProgramButton.waitFor({ state: 'visible' });
+  }
+
   async goto(): Promise<void> {
     await this.page.goto(programsUrl);
     await this.newProgramButton.waitFor({ state: 'visible' });
