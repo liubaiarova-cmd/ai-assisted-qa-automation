@@ -57,6 +57,12 @@ export class ProgramsPage {
     await this.waitForListSurface();
   }
 
+  /** Loads /programs and waits for the shell only (no table or empty-state wait). */
+  async openProgramsShell(): Promise<void> {
+    await this.page.goto(programsUrl);
+    await this.newProgramButton.waitFor({ state: 'visible' });
+  }
+
   async waitForListSurface(): Promise<void> {
     await this.page
       .getByRole('table')
