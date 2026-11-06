@@ -7,6 +7,9 @@ export class ProgramsPage {
   readonly createFirstProgramButton: Locator;
   readonly emptyStateMessage: Locator;
   readonly duplicateError: Locator;
+  readonly programsHeading: Locator;
+  readonly programsTable: Locator;
+  readonly alert: Locator;
   readonly modal: NewProgramModal;
 
   constructor(private readonly page: Page) {
@@ -14,6 +17,9 @@ export class ProgramsPage {
     this.createFirstProgramButton = page.getByRole('button', { name: 'Create Program' });
     this.emptyStateMessage = page.getByText(emptyProgramsMessage);
     this.duplicateError = page.getByText(/already|duplicate|exists|in use/i);
+    this.programsHeading = page.getByRole('heading', { name: 'Programs' });
+    this.programsTable = page.getByRole('table');
+    this.alert = page.getByRole('alert');
     this.modal = new NewProgramModal(page);
   }
 
@@ -57,6 +63,12 @@ export class ProgramsPage {
     await this.waitForListSurface();
   }
 
+  /** Programs URL only. Use when the list response renders neither a table nor the empty state. */
+  async gotoPrograms(): Promise<void> {
+    await this.page.goto(programsUrl);
+    await this.page.waitForURL(/\/programs/);
+  }
+
   async waitForListSurface(): Promise<void> {
     await this.page
       .getByRole('table')
@@ -96,7 +108,11 @@ export class ProgramsPage {
   }
 
   async confirmDelete(programName: string): Promise<void> {
-    const deleteButton = this.firstProgramRow(programName).getByRole('button', {
+    await this.respondToDelete(programName, 'accept');
+  }
+
+  async respondToDelete(programName: string, action: 'accept' | 'dismiss'): Promise<string> {
+    const deleteButton = this.programRow(programName).getByRole('button', {
       name: `Delete ${programName}`,
       exact: true,
     });
@@ -104,8 +120,11 @@ export class ProgramsPage {
     const dialogPromise = this.page.waitForEvent('dialog');
     const clickPromise = deleteButton.click();
     const dialog = await dialogPromise;
-    await dialog.accept();
+    const message = dialog.message();
+    if (action === 'accept') await dialog.accept();
+    else await dialog.dismiss();
     await clickPromise;
+    return message;
   }
 
   async openEdit(programName: string): Promise<NewProgramModal> {
