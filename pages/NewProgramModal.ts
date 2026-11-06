@@ -20,6 +20,8 @@ export class NewProgramModal {
   readonly editHeading: Locator;
   readonly newProgramHeading: Locator;
   readonly saveButton: Locator;
+  readonly defaultSessionHoursInput: Locator;
+  readonly defaultExamHoursInput: Locator;
 
   constructor(private readonly page: Page) {
     this.dialog = page.getByRole('dialog');
@@ -28,6 +30,8 @@ export class NewProgramModal {
     this.createButton = this.dialog.getByRole('button', { name: 'Create' });
     this.cancelButton = this.dialog.getByRole('button', { name: 'Cancel' });
     this.saveButton = this.dialog.getByRole('button', { name: 'Save' });
+    this.defaultSessionHoursInput = this.dialog.getByLabel('Default Session Hours');
+    this.defaultExamHoursInput = this.dialog.getByLabel('Default Exam Hours');
     this.lengthError = this.dialog.getByText(/too long|maximum|max\.?\s*\d+|character/i);
     this.editHeading = this.dialog.getByRole('heading', { name: 'Edit Program' });
     this.newProgramHeading = this.dialog.getByRole('heading', { name: 'New Program' });
