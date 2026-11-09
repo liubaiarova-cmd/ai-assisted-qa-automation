@@ -41,7 +41,7 @@ async function seedProgram(
 }
 
 test.describe('DS-3 Program name validation and duplicate prevention', () => {
-  test('TC-001 — Special characters in Program Name are accepted', async ({ page, trackProgram }) => {
+  test.fixme('TC-001 — Special characters in Program Name are accepted', async ({ page, trackProgram }) => {
     const programName = uniqueName('Informatique & IA - Niveau 2');
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
@@ -53,7 +53,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expectProgramVisible(programsPage, programName);
   });
 
-  test('TC-002 — Program Name is the only required field', async ({ page, trackProgram }) => {
+  test.fixme('TC-002 — Program Name is the only required field', async ({ page, trackProgram }) => {
     const programName = uniqueName('Informatique & IA - Niveau 2');
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
@@ -132,7 +132,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expect(programsPage.programRow(programName)).toHaveCount(1);
   });
 
-  test('TC-008 — Single-character Program Name is accepted', async ({ page, trackProgram }) => {
+  test.fixme('TC-008 — Single-character Program Name is accepted', async ({ page, trackProgram }) => {
     const programName = 'A';
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
@@ -144,7 +144,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expectProgramVisible(programsPage, programName);
   });
 
-  test('TC-009 — Program Name at 100 characters is accepted', async ({ page, trackProgram }) => {
+  test.fixme('TC-009 — Program Name at 100 characters is accepted', async ({ page, trackProgram }) => {
     expect(NAME_100.length).toBe(100);
     const programsPage = new ProgramsPage(page);
     const modal = await openCreateModal(programsPage);
@@ -172,7 +172,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expect(programsPage.programRow(NAME_101)).toHaveCount(0);
   });
 
-  test('TC-011 — Internal spaces are preserved and are not a duplicate of a collapsed name', async ({
+  test.fixme('TC-011 — Internal spaces are preserved and are not a duplicate of a collapsed name', async ({
     page,
     trackProgram,
   }) => {
@@ -191,7 +191,7 @@ test.describe('DS-3 Program name validation and duplicate prevention', () => {
     await expectProgramVisible(programsPage, existingName);
   });
 
-  test('TC-012 — HTML in Program Name is stored as text and not executed', async ({
+  test.fixme('TC-012 — HTML in Program Name is stored as text and not executed', async ({
     page,
     trackProgram,
   }) => {

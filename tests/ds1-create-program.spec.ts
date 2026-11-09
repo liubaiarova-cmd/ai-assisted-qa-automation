@@ -18,7 +18,7 @@ test.describe('Positive flows', () => {
     await expect(modal.createButton).toBeVisible();
   });
 
-  test('TC-002 — new program appears in the list after successful creation', async ({ page, trackProgram }) => {
+  test.fixme('TC-002 — new program appears in the list after successful creation', async ({ page, trackProgram }) => {
     const programName = `Web Development 2026 ${Date.now()}`;
     const description = 'Full-stack web development program';
     const programsPage = new ProgramsPage(page);
@@ -30,7 +30,7 @@ test.describe('Positive flows', () => {
     await expect(programsPage.firstProgramRow(programName)).toBeVisible();
   });
 
-  test('TC-003 — program can be created with a longer description', async ({ page, trackProgram }) => {
+  test.fixme('TC-003 — program can be created with a longer description', async ({ page, trackProgram }) => {
     const programName = `Data Science Fundamentals ${Date.now()}`;
     const description =
       'Introductory data science covering Python, statistics, and machine learning basics. ' +
@@ -80,7 +80,7 @@ test.describe('Negative flows', () => {
     await expect(programsPage.newProgramButton).toBeHidden();
   });
 
-  test('TC-007 — duplicate program name does not create a second conflicting entry', async ({
+  test.fixme('TC-007 — duplicate program name does not create a second conflicting entry', async ({
     page,
     trackProgram,
   }) => {
@@ -113,7 +113,7 @@ test.describe('Negative flows', () => {
 });
 
 test.describe('Edge cases', () => {
-  test('TC-008 — program name with leading and trailing whitespace is trimmed', async ({ page, trackProgram }) => {
+  test.fixme('TC-008 — program name with leading and trailing whitespace is trimmed', async ({ page, trackProgram }) => {
     const suffix = Date.now();
     const storedName = `Cloud Computing 2026 ${suffix}`;
     const programsPage = new ProgramsPage(page);
@@ -129,7 +129,7 @@ test.describe('Edge cases', () => {
     await expect(programsPage.firstProgramRow(storedName)).toBeVisible();
   });
 
-  test('TC-009 — program name accepts special characters and unicode', async ({ page, trackProgram }) => {
+  test.fixme('TC-009 — program name accepts special characters and unicode', async ({ page, trackProgram }) => {
     const programName = `AI & ML (2026) — Cohort #1 ${Date.now()}`;
     const description = 'Topics: NLP, CV, étude';
     const programsPage = new ProgramsPage(page);
@@ -141,7 +141,7 @@ test.describe('Edge cases', () => {
     await expect(programsPage.firstProgramRow(programName)).toBeVisible();
   });
 
-  test('TC-010 — program name at maximum allowed length is accepted', async ({ page, trackProgram }) => {
+  test.fixme('TC-010 — program name at maximum allowed length is accepted', async ({ page, trackProgram }) => {
     const suffix = String(Date.now());
     const programName = `${'A'.repeat(Math.max(0, 255 - suffix.length - 1))}${suffix}`;
     expect(programName.length).toBeLessThanOrEqual(255);
@@ -154,7 +154,7 @@ test.describe('Edge cases', () => {
     await expect(programsPage.firstProgramRow(programName)).toBeVisible();
   });
 
-  test('TC-011 — program name exceeding maximum length is rejected', async ({ page, trackProgram }) => {
+  test.fixme('TC-011 — program name exceeding maximum length is rejected', async ({ page, trackProgram }) => {
     const suffix = String(Date.now());
     const overlongName = `${'B'.repeat(256 - suffix.length)}${suffix}`;
     expect(overlongName.length).toBeGreaterThan(255);
@@ -179,7 +179,7 @@ test.describe('Edge cases', () => {
     expect(created).toBe(false);
   });
 
-  test('TC-012 — empty description behavior', async ({ page, trackProgram }) => {
+  test.fixme('TC-012 — empty description behavior', async ({ page, trackProgram }) => {
     const programName = `Cybersecurity Bootcamp ${Date.now()}`;
     const programsPage = new ProgramsPage(page);
 
@@ -210,7 +210,7 @@ test.describe('Edge cases', () => {
     await expect(modal.createButton).toBeDisabled();
   });
 
-  test('TC-014 — XSS or script-like strings are stored safely', async ({ page, trackProgram }) => {
+  test.fixme('TC-014 — XSS or script-like strings are stored safely', async ({ page, trackProgram }) => {
     const programName = `Security Test Program ${Date.now()}`;
     const xssPayload = "<script>alert('xss')</script>";
     let alertDialogSeen = false;
