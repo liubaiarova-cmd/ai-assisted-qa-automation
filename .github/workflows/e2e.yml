@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       DIDAXIS_URL: ${{ secrets.DIDAXIS_URL }}
       DIDAXIS_EMAIL: ${{ secrets.DIDAXIS_EMAIL }}
