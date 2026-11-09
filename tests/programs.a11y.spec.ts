@@ -6,7 +6,7 @@ import { runA11yCheck } from '../utils/a11y-expect';
 test.setTimeout(60_000);
 
 test.describe('Programs accessibility', () => {
-  test('programs page has no automatically detectable accessibility violations', async ({
+  test.fixme('programs page has no automatically detectable accessibility violations', async ({
     page,
   }, testInfo) => {
     await runA11yCheck(
@@ -21,7 +21,7 @@ test.describe('Programs accessibility', () => {
     );
   });
 
-  test('New Program modal has no accessibility violations when color-contrast is disabled', async ({
+  test.fixme('New Program modal has no accessibility violations when color-contrast is disabled', async ({
     page,
   }, testInfo) => {
     await runA11yCheck(

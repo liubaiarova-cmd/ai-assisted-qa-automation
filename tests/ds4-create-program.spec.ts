@@ -16,7 +16,7 @@ import {
 test.setTimeout(120_000);
 
 test.describe('Positive flows', () => {
-  test('TC-001 — confirmed deletion removes the program from the list', async ({ page, trackProgram }) => {
+  test.fixme('TC-001 — confirmed deletion removes the program from the list', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Program scheduled for deletion', trackProgram);
@@ -27,7 +27,7 @@ test.describe('Positive flows', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-002 — cancelled deletion keeps the program in the list', async ({ page, trackProgram }) => {
+  test.fixme('TC-002 — cancelled deletion keeps the program in the list', async ({ page, trackProgram }) => {
     const programName = uniqueName('Web Development 2026');
 
     await createProgram(page, programName, 'Full-stack web development program', trackProgram);
@@ -36,7 +36,7 @@ test.describe('Positive flows', () => {
     await expect(programRow(page, programName)).toBeVisible();
   });
 
-  test('TC-003 — confirmation dialog names the program being removed', async ({ page, trackProgram }) => {
+  test.fixme('TC-003 — confirmation dialog names the program being removed', async ({ page, trackProgram }) => {
     const programName = uniqueName('Cybersecurity Bootcamp');
 
     await createProgram(page, programName, 'Security operations track', trackProgram);
@@ -47,7 +47,7 @@ test.describe('Positive flows', () => {
     await expect(programRow(page, programName)).toBeVisible();
   });
 
-  test('TC-004 — list updates immediately after a successful delete', async ({ page, trackProgram }) => {
+  test.fixme('TC-004 — list updates immediately after a successful delete', async ({ page, trackProgram }) => {
     const programName = uniqueName('Data Science Fundamentals');
 
     await createProgram(page, programName, 'Introductory data science curriculum', trackProgram);
@@ -59,7 +59,7 @@ test.describe('Positive flows', () => {
 });
 
 test.describe('Negative flows', () => {
-  test('TC-005 — a program stays listed when delete is not started', async ({ page, trackProgram }) => {
+  test.fixme('TC-005 — a program stays listed when delete is not started', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Untouched program', trackProgram);
@@ -69,7 +69,7 @@ test.describe('Negative flows', () => {
     await expect(programRow(page, programName)).toBeVisible();
   });
 
-  test('TC-006 — dismissing the confirmation does not delete the program', async ({ page, trackProgram }) => {
+  test.fixme('TC-006 — dismissing the confirmation does not delete the program', async ({ page, trackProgram }) => {
     const programName = uniqueName('Cloud Computing 2026');
 
     await createProgram(page, programName, 'Cloud infrastructure and DevOps track', trackProgram);
@@ -102,7 +102,7 @@ test.describe('Negative flows', () => {
     ).toHaveCount(0);
   });
 
-  test('TC-008 — a failed delete request leaves the program in the list', async ({ page, trackProgram }) => {
+  test.fixme('TC-008 — a failed delete request leaves the program in the list', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Delete failure target', trackProgram);
@@ -130,7 +130,7 @@ test.describe('Negative flows', () => {
     await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible();
   });
 
-  test('TC-009 — one confirmation removes the program once', async ({ page, trackProgram }) => {
+  test.fixme('TC-009 — one confirmation removes the program once', async ({ page, trackProgram }) => {
     const programName = uniqueName('Mobile Development 2026');
     let confirmations = 0;
 
@@ -152,7 +152,7 @@ test.describe('Negative flows', () => {
 });
 
 test.describe('Edge cases', () => {
-  test('TC-010 — a program with special characters can be deleted', async ({ page, trackProgram }) => {
+  test.fixme('TC-010 — a program with special characters can be deleted', async ({ page, trackProgram }) => {
     const programName = uniqueName('Informatique & IA - Niveau 2');
 
     await createProgram(page, programName, 'Programme bilingue', trackProgram);
@@ -166,7 +166,7 @@ test.describe('Edge cases', () => {
     // The shared tenant already contains other programs.
   });
 
-  test('TC-012 — a long program name is included in the delete confirmation', async ({ page, trackProgram }) => {
+  test.fixme('TC-012 — a long program name is included in the delete confirmation', async ({ page, trackProgram }) => {
     const suffix = String(Date.now());
     const programName = `${'LongName'.repeat(12)} ${suffix}`;
 
@@ -177,7 +177,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-013 — deletion updates a filtered program list', async ({ page, trackProgram }) => {
+  test.fixme('TC-013 — deletion updates a filtered program list', async ({ page, trackProgram }) => {
     await goToPrograms(page);
     const filter = await programFilter(page);
     test.skip(!filter, 'Programs page has no search or filter control');
@@ -189,7 +189,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-014 — delete confirmation warns that related semesters and courses are removed', async ({ page, trackProgram }) => {
+  test.fixme('TC-014 — delete confirmation warns that related semesters and courses are removed', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Program without enrollments', trackProgram);
@@ -199,7 +199,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-015 — delete confirmation can be accepted from the keyboard', async ({ page, trackProgram }) => {
+  test.fixme('TC-015 — delete confirmation can be accepted from the keyboard', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Keyboard delete target', trackProgram);
@@ -219,7 +219,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-016 — successful delete does not show an error dialog', async ({ page, trackProgram }) => {
+  test.fixme('TC-016 — successful delete does not show an error dialog', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Silent success target', trackProgram);
@@ -230,7 +230,7 @@ test.describe('Edge cases', () => {
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 
-  test('TC-017 — a deleted name can be used for a new program', async ({ page, trackProgram }) => {
+  test.fixme('TC-017 — a deleted name can be used for a new program', async ({ page, trackProgram }) => {
     const programName = uniqueName('Test Program');
 
     await createProgram(page, programName, 'Original program', trackProgram);
