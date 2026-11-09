@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import {
   createProgram,
+  expectProgramInList,
   goToPrograms,
   loginUrl,
   openEditForm,
@@ -236,7 +237,7 @@ test.describe('Edge cases', () => {
     await dialog.getByRole('textbox', { name: 'Description' }).fill(description);
     await submitSave(dialog);
 
-    await expect(programRow(page, updatedName)).toBeVisible();
+    await expectProgramInList(page, updatedName);
     await expectDescription(page, updatedName, description);
   });
 
@@ -264,9 +265,18 @@ test.describe('Edge cases', () => {
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(overlongName);
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeEnabled();
-    await submitSave(dialog);
+    const savedName = await submitSave(dialog);
+    if (savedName !== undefined) {
+      expect(savedName).toBe(overlongName);
+      expect(savedName).toHaveLength(256);
+    }
 
-    await expect(programRow(page, overlongName)).toBeVisible();
+    await expectProgramInList(page, overlongName);
+    const reopened = await openEditForm(page, overlongName);
+    await expect(reopened.getByRole('textbox', { name: 'Program Name' })).toHaveValue(overlongName);
+    await reopened.getByRole('button', { name: 'Cancel' }).click();
+    await expect(reopened).toBeHidden();
+
     await expect(programRow(page, programName)).toHaveCount(0);
   });
 

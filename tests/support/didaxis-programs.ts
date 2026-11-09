@@ -86,6 +86,15 @@ function isProgramCreate(response: Response): boolean {
   }
 }
 
+function isProgramPatch(response: Response): boolean {
+  if (response.request().method() !== 'PATCH') return false;
+  try {
+    return /^\/api\/programs\/[^/]+$/.test(new URL(response.url()).pathname);
+  } catch {
+    return false;
+  }
+}
+
 export async function trackCreatedProgram(response: Response, trackProgram: TrackProgram): Promise<void> {
   if (response.status() !== 201) return;
   const id = (await response.json())?.data?.id as string | undefined;
@@ -156,11 +165,25 @@ export async function openEditForm(page: Page, programName: string): Promise<Loc
   return dialog;
 }
 
-export async function submitSave(dialog: Locator): Promise<void> {
+export async function submitSave(dialog: Locator): Promise<string | undefined> {
+  const page = dialog.page();
+  const responsePromise = page.waitForResponse(
+    (response) => isProgramPatch(response) && response.status() === 200,
+    { timeout: 45_000 },
+  );
   const saveButton = dialog.getByRole('button', { name: 'Save' });
   await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await saveButton.click();
+  const response = await responsePromise;
+  let savedName: string | undefined;
+  try {
+    const body = (await response.json()) as { data?: { name?: string } };
+    savedName = body.data?.name;
+  } catch {
+    savedName = undefined;
+  }
   await expect(dialog).toBeHidden({ timeout: 45_000 });
+  return savedName;
 }
 
 export async function acceptDeleteConfirm(page: Page, programName: string): Promise<string> {

@@ -13,6 +13,7 @@ During **analyze**, run live UI recon per jira-ticket-to-gherkin step 2 when cre
 
 - **jira-ticket-to-gherkin** — a DS ticket into `features/<key>.feature`. Use this when a ticket exists.
 - **explore-and-generate** — no ticket. One highest-value uncovered flow into `features/explore-<area>-<flow>.feature`. Do not use it when a ticket already exists.
+- **self-heal** — after triage classifies locator drift (test issue): re-discover via Agent-Browser, patch the POM, prove green with assertions unchanged, open a repair PR. Never for a real app bug.
 
 ## Live app tooling
 
@@ -29,6 +30,7 @@ Record which tool you used. Login: `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASS
 | **Ticket → plan** (you) | Always: walk AC flows, confirm behaviour, capture locators |
 | **test-writer** | Before coding: re-check locators and steps from the approved plan. For programs network edge cases, read the live error and empty-state copy before assertions (`programs-network-edge-cases`). For the programs page, add the WCAG axe scan and the keyboard dialog check (`a11y-checks`); violations are reported and must not turn CI red |
 | **triage** | When trace/artifacts are missing, stale, or classification is unclear |
+| **self-heal** | After triage says drift: Agent-Browser a11y snapshot to re-discover the locator before patching the POM |
 | **bug-reporter** | No live crawl — works from triage output only |
 
 `npx playwright test` remains the gate after specs exist; the tools above complement it for exploration and diagnosis.
@@ -45,9 +47,10 @@ If you touch `playwright.config.ts`, keep `fullyParallel: true`, `retries: proce
 | No ticket / "find what we're not testing" / "explore for untested flows" / "expand coverage" | **explore-and-generate** → one feature file, then the plan-ready path |
 | Plan ready | Delegate to **test-writer** subagent |
 | Spec returned | Run `npx playwright test` (target the new/changed spec when possible) |
-| Run is red | Delegate to **triage** subagent |
-| Real app bug | Delegate to **bug-reporter** subagent (after human confirms) |
-| Test issue | Delegate to **test-writer** (propose a fix; human OKs) |
+| Run is red | Delegate to **triage**, then **Heal on red** |
+| Real app bug | Delegate to **bug-reporter** subagent (after human confirms) — never heal |
+| Test issue (locator drift) | Apply **self-heal** (see Heal on red) |
+| Test issue (other) | Delegate to **test-writer** (propose a fix; human OKs) |
 | External backlog trigger | **Backlog mode**, one ticket at a time |
 
 ## Backlog mode
@@ -74,16 +77,28 @@ project = DS AND status = "In Progress" AND (labels is EMPTY OR labels != "tests
 2. **Crawl the real app** (MCP → `agent-browser` → Playwright CLI): navigate flows, confirm behaviour matches AC, and note real locators for the plan: `getByRole` → `getByLabel` / `getByPlaceholder` → `getByText` → `getByTestId` (escape hatch only — say why). No CSS or XPath. Disambiguate with `.filter({ hasText })`, not `.first()`.
 3. Stop after the plan — do not write Playwright code until the human approves the scenarios.
 
+## Heal on red
+
+On a red run, classify first — then heal only locator drift.
+
+1. Delegate to **triage** to classify the failure.
+2. **Drift (test issue):** apply **self-heal** — re-discover the element via the Agent-Browser a11y tree, patch the POM locator (minimal role-based diff), re-run to prove green with assertions unchanged, then open a repair PR linked to the run. Do not merge.
+3. **Real app bug:** delegate to **bug-reporter** to file and link it (after human confirms). Never heal a bug.
+4. **Budget:** at most **5 heals** per run. Leave further drift for the next trigger.
+5. **Stop and escalate** if a heal will not prove green (still red, or green only by changing an assertion). Never heal an assertion. Never merge a repair without a human.
+
 ## Loop guard
 
 - At most **3 delegations** per task.
 - Never re-run the **same failing spec** more than **twice** — then stop and ask.
 - In backlog mode, stop that ticket and move on.
+- At most **5 heals** per run (see Heal on red).
 
 ## Guardrails
 
-- A human approves **every merge** and **every filed bug** — no exceptions. No subagent merges; bug-reporter files only after a human confirms the defect.
+- A human approves **every merge** and **every filed bug** — no exceptions. No subagent merges; bug-reporter files only after a human confirms the defect. Never merge a self-heal repair PR without a human.
 - **bug-reporter** runs only after triage classifies a real app bug and the human confirms.
+- **self-heal** runs only after triage classifies locator drift. Never heal a real app bug. Never weaken, delete, or rewrite an assertion to get green.
 - **No subagent edits application source.** Fixes to app code are proposed, never applied.
 
 Blast radius per specialist:
@@ -93,8 +108,10 @@ Blast radius per specialist:
 | **test-writer** | Writes test code only under `tests/`, `pages/`, `fixtures/`; page-object changes go back to you as proposals; no commits or PRs unless asked. |
 | **triage** | Read-only: reads CI logs, artifacts, and repo; returns a diagnosis, changes nothing. |
 | **bug-reporter** | Read-only on the repo; its only side effect is one Jira bug linked to the story. |
+| **self-heal** | Patches one drifted locator in `pages/`; opens one unmerged repair PR; never edits assertions in `tests/`. |
 
 ## Done
 
 - **Single ticket:** suite is green for the ticket scope, or a bug is filed, linked to the story, and the human accepts that outcome.
 - **Backlog run:** each taken ticket has one open PR linked to the DS key and the `tests-generated` label; nothing was merged or closed.
+- **Heal on red:** each drift heal has one open repair PR linked to the run (assertions unchanged); real bugs are filed, not healed; nothing was merged.

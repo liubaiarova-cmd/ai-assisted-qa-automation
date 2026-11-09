@@ -24,7 +24,7 @@ test.describe('Positive flows', () => {
 
     expect(message).toContain(programName);
     expect(message).toContain('cannot be undone');
-    await expect(programRow(page, programName)).toHaveCount(1);
+    await expect(programRow(page, programName)).toHaveCount(0);
   });
 
   test('TC-002 — cancelled deletion keeps the program in the list', async ({ page, trackProgram }) => {
@@ -126,7 +126,8 @@ test.describe('Negative flows', () => {
     await dialog.accept();
     await clickPromise;
 
-    await expect(programRow(page, programName)).not.toBeVisible();
+    await expect(programRow(page, programName)).toHaveCount(1);
+    await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible();
   });
 
   test('TC-009 — one confirmation removes the program once', async ({ page, trackProgram }) => {

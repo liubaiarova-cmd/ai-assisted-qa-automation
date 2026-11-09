@@ -227,3 +227,14 @@ Why: extra retries hide a real bug, `workers: 1` only slows the suite, and a liv
 | 8 Accessibility | Axe `wcag2a` + `wcag2aa`; Tab to the control, then Enter | `.focus()`, `.disableRules()` to force green |
 | 9 Assertions | Web-first `expect` in the spec | A snapshot boolean; a screenshot that is not the point of the test |
 | 10 Anti-flake | CI retries 2, local 0; `en-CA` / `America/Toronto`; `page.clock` for relative time | `retries` above 2, `workers: 1`, the wall clock |
+
+## Refusals (hard stops)
+
+Stop and raise the conflict — do not comply, weaken, or work around:
+
+- Never weaken or delete an assertion to make a test pass.
+- Never heal a failure triage classified as a real app bug.
+- Never replace a role-based locator with CSS or XPath.
+- Never use `waitForTimeout`.
+- Never hardcode a credential.
+- Never use the `any` type.
