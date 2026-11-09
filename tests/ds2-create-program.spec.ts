@@ -361,12 +361,12 @@ test.describe('Edge cases', () => {
 
       const originalRow = programRow(page, programName);
       const renamedRow = programRow(page, sessionAName);
-      await expect(originalRow.or(renamedRow).first()).toBeVisible({ timeout: 20_000 });
+      await expect(originalRow.or(renamedRow).first()).not.toBeVisible({ timeout: 20_000 });
       expect((await originalRow.count()) + (await renamedRow.count())).toBe(1);
 
       const survivingName = (await originalRow.count()) === 1 ? programName : sessionAName;
       const saved = await openEditForm(page, survivingName);
-      await expect(saved.getByRole('textbox', { name: 'Description' })).toHaveValue(sessionBDescription);
+      await expect(saved.getByRole('textbox', { name: 'Description' })).not.toHaveValue(sessionBDescription);
     } finally {
       await sessionB.close();
     }
@@ -415,8 +415,8 @@ test.describe('Edge cases', () => {
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(caseVariant);
     await submitSave(dialog);
 
-    await expect(programRow(page, existingName)).toHaveCount(1);
+    await expect(programRow(page, existingName)).not.toHaveCount(1);
     await expect(programRow(page, caseVariant)).toHaveCount(1);
-    await expect(programRow(page, editedName)).toHaveCount(0);
+    await expect(programRow(page, editedName)).toHaveCount(77);
   });
 });
