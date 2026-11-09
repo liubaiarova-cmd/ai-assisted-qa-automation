@@ -65,9 +65,9 @@ project = DS AND status = "In Progress" AND (labels is EMPTY OR labels != "tests
 
 **Budget.** At most 5 tickets per run. Leave the rest for the next trigger.
 
-**Per ticket.** analyze → test-writer → `npx playwright test` → triage on red. The coordinator opens one PR for that ticket (test-writer still only writes under `tests/`, `pages/`, `fixtures/`). Put the DS key in the PR title and body. When the PR is open, add the `tests-generated` label on the ticket so the next run skips it.
+**Per ticket.** analyze → test-writer → `npx playwright test` → triage on red → **Heal on red** when triage says locator drift (self-heal; budget shared across the run). The coordinator opens one PR for that ticket (test-writer still only writes under `tests/`, `pages/`, `fixtures/`). Self-heal may open a separate unmerged repair PR. Put the DS key in the PR title and body. When the ticket PR is open, add the `tests-generated` label on the ticket so the next run skips it.
 
-**Repeated identical failure.** Never re-run that same failing spec again. Stop the ticket, leave its PR unmerged, add `tests-generated` if the PR is open, and move to the next ticket.
+**Repeated identical failure.** After triage (and a drift heal if applicable), never re-run that same failing spec more than twice. Then stop the ticket, leave its PR(s) unmerged, add `tests-generated` if the ticket PR is open, and move to the next ticket.
 
 **Human gate.** Never merge a PR. Never close or transition the ticket. A human approves every merge and every filed bug.
 

@@ -37,7 +37,7 @@ jobs:
           curl https://cursor.com/install -fsS | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Work the In Progress backlog
+      - name: Work the In Progress backlog (generate + heal on red)
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
@@ -45,7 +45,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           agent -p --force --trust --output-format text "$(cat <<'EOF'
-          Backlog mode. This workflow is the external trigger. Follow .cursor/rules/qa-orchestration.mdc.
+          Backlog mode. This workflow is the external trigger. Follow .cursor/rules/qa-orchestration.mdc and .cursor/skills/self-heal/SKILL.md.
 
           Work DS tickets in status "In Progress" that do not have the tests-generated label. Take at most 5 tickets, lowest key first.
 
@@ -53,11 +53,15 @@ jobs:
           1. Analyze the ticket, including live UI recon when DIDAXIS_EMAIL and DIDAXIS_PASSWORD are set.
           2. Write a conforming Playwright spec under tests/. Page objects and fixtures only under pages/ and fixtures/. Do not edit application source.
           3. Run that spec with npx playwright test.
-          4. If the same spec fails the same way again, stop that ticket and move on. Do not retry it.
-          5. Open one pull request linked to the ticket. Put the DS key in the title and body.
-          6. Add the tests-generated label on the Jira ticket so the next run skips it.
+          4. If red: triage first (ci-failure-triage). Then Heal on red:
+             - Locator drift (test issue): apply self-heal — re-discover via agent-browser a11y snapshot (fallback: Playwright CLI), patch one locator in pages/ only, prove green with assertions unchanged (git diff -- tests/ must show no assertion edits), open one unmerged repair PR linked to the run/ticket. At most 5 heals for this whole workflow run.
+             - Real app bug: do NOT heal and do NOT file a Jira bug in this run (human must confirm first). Note the diagnosis on the ticket PR.
+             - Other test issue (wrong assertion, wait, flake, not drift): do NOT self-heal; leave the PR unmerged with the diagnosis and move on.
+          5. If the same failing spec is still red after triage/heal attempts (loop guard: never re-run the same failing spec more than twice), stop that ticket and move on.
+          6. Open one pull request linked to the ticket for the generated tests. Put the DS key in the title and body. Heal repairs may be a separate unmerged PR per self-heal.
+          7. Add the tests-generated label on the Jira ticket so the next run skips it (even if the suite stayed red after triage/heal budget).
 
-          Never merge a pull request. Never close or transition the ticket. A human approves every merge and every filed bug.
+          Never merge a pull request. Never close or transition the ticket. Never weaken, delete, or rewrite an assertion to get green. A human approves every merge and every filed bug.
 
           Use ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN for Jira Cloud REST (not browser login). Use GITHUB_TOKEN for git and pull requests.
           EOF
