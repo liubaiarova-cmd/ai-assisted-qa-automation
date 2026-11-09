@@ -50,6 +50,10 @@ jobs:
             exit 1
           fi
 
+      - name: Record baseline ref
+        id: baseline
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Work the In Progress backlog
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
@@ -62,6 +66,8 @@ jobs:
 
           Work DS tickets in status "In Progress" that do not have the tests-generated label. Take at most 5 tickets, lowest key first.
 
+          If that query returns no tickets, print that the queue is empty and exit 0. An empty queue is a normal outcome. Do not fail the job. Do not invent a ticket. Self-heal runs in the next step.
+
           For each ticket:
           1. Analyze the ticket, including live UI recon when DIDAXIS_EMAIL and DIDAXIS_PASSWORD are set.
           2. Write a conforming Playwright spec under tests/. Page objects and fixtures only under pages/ and fixtures/. Do not edit application source.
@@ -73,6 +79,38 @@ jobs:
           Never merge a pull request. Never close or transition the ticket. A human approves every merge and every filed bug.
 
           Use ATLASSIAN_EMAIL with ATLASSIAN_API_TOKEN for Jira (API token auth). Use GITHUB_TOKEN for git and pull requests.
+          EOF
+          )"
+
+      - name: Reset to baseline for self-heal
+        if: ${{ !cancelled() }}
+        run: |
+          git reset --hard "${{ steps.baseline.outputs.sha }}"
+          git clean -fd -e node_modules -e .npm
+
+      - name: Self-heal locator drift
+        if: ${{ !cancelled() }}
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          agent -p --force --trust --output-format text "$(cat <<'EOF'
+          Self-heal mode. Run this even when no Jira ticket was ready. An empty In Progress queue does not skip this step. Do not query Jira for work, and do not create or transition tickets.
+
+          Follow .cursor/rules/qa-orchestration.mdc (Heal on red), .cursor/skills/ci-failure-triage/SKILL.md, and .cursor/skills/self-heal/SKILL.md.
+
+          1. Run the suite with npx playwright test.
+          2. If it is green, stop. Do not open a pull request.
+          3. Triage each failure before any edit. Heal only locator drift classified as a test issue. At most 5 heals. One drifted locator per heal, under pages/ only. Do not edit assertions in tests/. Do not edit application source.
+          4. Re-discover the element on the live app. On this runner use the first tool that works: agent-browser, then Playwright CLI (npx playwright test <file> -g "<title>" --headed --trace on). Read the accessible name from that run. Do not guess it from the old selector.
+          5. Re-run the healed spec and prove it green with assertions unchanged. git diff -- tests/ must show no assertion edits. If it stays red, or is green only after an assertion change, revert that heal and stop it.
+          6. Open one unmerged repair PR per heal. Name the POM property, the old locator, the new locator, and the green command. Do not merge.
+          7. Leave product defects, env failures, and flakes unhealed. Report them in the summary. Do not file a Jira bug.
+          8. Never re-run the same failing spec more than twice.
+
+          Exit 0 after the suite has been triaged, including when nothing was drift or the heal budget is spent. Exit non-zero only when the suite could not be run.
+
+          The workspace is the workflow baseline, not a ticket branch. Use GITHUB_TOKEN for git and pull requests. Didaxis credentials are already in the environment.
           EOF
           )"
 
