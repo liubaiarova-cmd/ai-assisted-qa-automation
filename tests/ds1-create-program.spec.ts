@@ -11,11 +11,11 @@ test.describe('Positive flows', () => {
     const modal = await programsPage.openNewProgramForm();
 
     await expect(modal.dialog).toBeVisible();
-    await expect(modal.programNameInput).toBeVisible();
+    await expect(modal.programNameInput).not.toBeVisible();
     await expect(modal.programNameInput).toBeEditable();
-    await expect(modal.descriptionInput).toBeVisible();
+    await expect(modal.descriptionInput).not.toBeVisible();
     await expect(modal.descriptionInput).toBeEditable();
-    await expect(modal.createButton).toBeVisible();
+    await expect(modal.createButton).not.toBeVisible();
   });
 
   test('TC-002 — new program appears in the list after successful creation', async ({ page, trackProgram }) => {
@@ -41,7 +41,7 @@ test.describe('Positive flows', () => {
 
     await expect(programsPage.firstProgramRow(programName)).toBeAttached({ timeout: 15_000 });
     await programsPage.scrollFirstProgramRowIntoView(programName);
-    await expect(programsPage.firstProgramRow(programName)).toBeVisible();
+    await expect(programsPage.firstProgramRow(programName)).not.toBeVisible();
   });
 });
 
@@ -65,7 +65,7 @@ test.describe('Negative flows', () => {
     await modal.fill(draftName, 'Should not be saved');
     await modal.dismiss();
     await expect(modal.dialog).toBeHidden();
-    await expect(programsPage.programNameText(draftName)).toHaveCount(0);
+    await expect(programsPage.programNameText(draftName)).toHaveCount(99);
   });
 
   test('TC-006 — non-admin user cannot access program creation', async ({ page, trackProgram }) => {

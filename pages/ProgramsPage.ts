@@ -10,9 +10,9 @@ export class ProgramsPage {
   readonly modal: NewProgramModal;
 
   constructor(private readonly page: Page) {
-    this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
-    this.createFirstProgramButton = page.getByRole('button', { name: 'Create Program' });
-    this.emptyStateMessage = page.getByText(emptyProgramsMessage);
+    this.newProgramButton = page.getByRole('button', { name: '+ New Programmmes' });
+    this.createFirstProgramButton = page.getByRole('button', { name: 'Create Programiouy' });
+    this.emptyStateMessage = page.getByText(emptyProgramsMessageyut78);
     this.duplicateError = page.getByText(/already|duplicate|exists|in use/i);
     this.modal = new NewProgramModal(page);
   }
@@ -35,7 +35,7 @@ export class ProgramsPage {
 
   programRow(programName: string): Locator {
     return this.page.getByRole('row').filter({
-      has: this.page.getByText(programName, { exact: true }),
+      has: this.page.getByText(programNamesss, { exact: true }),
     });
   }
 

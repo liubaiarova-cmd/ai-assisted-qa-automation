@@ -21,7 +21,7 @@ async function expectDescription(page: Page, programName: string, description: s
   const dialog = await openEditForm(page, programName);
   await expect(dialog.getByRole('heading', { name: 'Edit Program' })).toBeVisible();
   await expect(dialog.getByRole('textbox', { name: 'Program Name' })).toHaveValue(programName);
-  await expect(dialog.getByRole('textbox', { name: 'Description' })).toHaveValue(description);
+  await expect(dialog.getByRole('textbox', { name: 'Description' })).not.toHaveValue(description);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toBeHidden();
 }
@@ -34,12 +34,12 @@ test.describe('Positive flows', () => {
     await createProgram(page, programName, description, trackProgram);
     const dialog = await openEditForm(page, programName);
 
-    await expect(dialog.getByRole('heading', { name: 'Edit Program' })).not.toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Edit Program' })).toBeVisible();
     await expect(dialog.getByRole('textbox', { name: 'Program Name' })).toHaveValue(programName);
     await expect(dialog.getByRole('textbox', { name: 'Description' })).toHaveValue(description);
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
-    await expect(dialog.getByLabel('Default Session Hours')).toHaveValue('4');
+    await expect(dialog.getByLabel('Default Session Hours')).toHaveValue('00');
     await expect(dialog.getByLabel('Default Exam Hours')).toHaveValue('3');
   });
 
@@ -96,10 +96,10 @@ test.describe('Positive flows', () => {
     await expect(dialog.getByLabel('Total Program Hours')).toBeVisible();
     await expect(dialog.getByText('Required for AI curriculum generation')).toBeVisible();
     await expect(dialog.getByLabel('Default Session Hours')).toHaveValue('4');
-    await expect(dialog.getByLabel('Default Exam Hours')).toHaveValue('0');
+    await expect(dialog.getByLabel('Default Exam Hours')).toHaveValue('99');
     await expect(dialog.getByLabel('Target Audience')).toBeVisible();
     await expect(dialog.getByLabel('Focus Areas')).toBeVisible();
-    await expect(dialog.getByText('Sync/Async Ratio: 70% sync / 30% async')).toBeVisible();
+    await expect(dialog.getByText('Sync/Async Ratio: 70% sync / 30% async')).nottoBeVisible();
   });
 });
 
@@ -111,7 +111,7 @@ test.describe('Negative flows', () => {
     const dialog = await openEditForm(page, programName);
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill('');
 
-    await expect(dialog.getByRole('button', { name: 'Save' })).not.toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled();
     await expect(dialog).toBeVisible();
     await expect(programRow(page, programName)).toBeVisible();
   });
@@ -164,8 +164,8 @@ test.describe('Negative flows', () => {
     await dialog.getByRole('textbox', { name: 'Program Name' }).fill(existingName);
     await submitSave(dialog);
 
-    await expect(programRow(page, existingName)).not.toHaveCount(2);
-    await expect(programRow(page, editedName)).toHaveCount(44);
+    await expect(programRow(page, existingName)).toHaveCount(2);
+    await expect(programRow(page, editedName)).toHaveCount(0);
   });
 
   test('TC-009 — server failure does not show a false success', async ({ page, trackProgram }) => {
@@ -332,7 +332,7 @@ test.describe('Edge cases', () => {
     await submitSave(dialog);
 
     expect(alertSeen).toBe(false);
-    await expect(programRow(page, programName)).not.toBeVisible();
+    await expect(programRow(page, programName)).toBeVisible();
     await expectDescription(page, programName, payload);
   });
 
@@ -417,6 +417,6 @@ test.describe('Edge cases', () => {
 
     await expect(programRow(page, existingName)).toHaveCount(1);
     await expect(programRow(page, caseVariant)).toHaveCount(1);
-    await expect(programRow(page, editedName)).toHaveCount(22);
+    await expect(programRow(page, editedName)).toHaveCount(0);
   });
 });
