@@ -7,10 +7,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       DIDAXIS_URL: ${{ secrets.DIDAXIS_URL }}
       DIDAXIS_EMAIL: ${{ secrets.DIDAXIS_EMAIL }}
@@ -28,11 +32,56 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - run: npx playwright test
+      - name: Run Playwright suite
+        id: suite
+        run: |
+          set -o pipefail
+          if npx playwright test 2>&1 | tee suite-run.log; then
+            echo "conclusion=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "conclusion=failure" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Install Cursor CLI
+        if: ${{ !cancelled() && steps.suite.outcome == 'failure' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Self-heal locator drift
+        if: ${{ !cancelled() && steps.suite.outcome == 'failure' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          agent -p --force --trust --output-format text "$(cat <<'EOF'
+          Self-heal mode. The E2E suite on this workflow already failed. Do not query Jira for work, and do not create or transition tickets.
+
+          Read suite-run.log and playwright-report/. Do not run `npx playwright test` with no file filter. A full suite inside the agent is killed with SIGTERM.
+
+          Follow .cursor/rules/qa-orchestration.mdc (Heal on red), .cursor/skills/ci-failure-triage/SKILL.md, and .cursor/skills/self-heal/SKILL.md.
+
+          1. Triage each failure in suite-run.log before any edit. Heal only locator drift classified as a test issue. At most 5 heals. One drifted locator per heal, under pages/ only. Do not edit assertions in tests/. Do not edit application source.
+          2. Re-discover the element on the live app. On this runner use the first tool that works: agent-browser, then Playwright CLI (npx playwright test <file> -g "<title>" --headed --trace on). Read the accessible name from that run. Do not guess it from the old selector.
+          3. Re-run only the healed test: npx playwright test <spec> -g "<title>". Prove it green with assertions unchanged. git diff -- tests/ must show no assertion edits. If it stays red, or is green only after an assertion change, revert that heal and stop it.
+          4. Open one unmerged repair PR per heal from this commit. Name the POM property, the old locator, the new locator, the green command, and link $GITHUB_RUN_URL. Do not merge.
+          5. Leave product defects, env failures, and flakes unhealed. Report them in the summary. Do not file a Jira bug.
+          6. Never re-run the same failing spec more than twice.
+
+          Exit 0 after the log has been triaged, including when nothing was drift or the heal budget is spent. Exit non-zero only when suite-run.log cannot be read.
+
+          Use GITHUB_TOKEN for git and pull requests. Didaxis credentials are already in the environment.
+          EOF
+          )"
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            suite-run.log
           retention-days: 7
+          if-no-files-found: warn
