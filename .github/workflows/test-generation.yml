@@ -119,7 +119,7 @@ jobs:
           4. Open one unmerged repair PR per heal, from this baseline commit. Name the POM property, the old locator, the new locator, the green command, and link $GITHUB_RUN_URL. Do not merge.
           5. Leave product defects, env failures, and flakes unhealed. Report them in the summary. Do not file a Jira bug.
           6. Never re-run the same failing spec more than twice.
-          7. Do self-healing even if there are no Jira tickets ready to work on.
+          7. Do self-healing even if there are no Jira tickets ready to work on!
 
           Exit 0 after the log has been triaged, including when nothing was drift or the heal budget is spent. Exit non-zero only when suite-run.log cannot be read.
 
