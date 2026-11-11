@@ -23,10 +23,10 @@ When invoked:
    - Before writing assertions, open the real page (Playwright MCP → `agent-browser` → Playwright CLI) and read the error and empty-state copy. Assert that. If the app renders nothing, say so. Do not invent strings.
    - Never mock the endpoint the test is verifying. `route.continue()` every other method.
    - Route clicks, fills, and navigation through `ProgramsPage`, `NewProgramModal`, or `LoginPage`. Do not call `submitCreate` / `createProgram` when the fulfilled status is not **201**.
-   - One `tag` string per test.
-5. Apply the `a11y-checks` skill for the programs page. Two tests, one tag each, navigation through `ProgramsPage` / `NewProgramModal` only:
-   - `@programs-a11y-axe`: `new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()` inside `runA11yCheck`, asserted with `expect(results.violations).toEqual([])`. `.include()` / `.exclude()` only if a third-party widget is noisy, with a comment why.
-   - `@programs-a11y-keyboard`: Tab to `newProgramButton`, `toBeFocused()`, Enter, dialog visible. No inline locators.
+   - One suite `tag` per test: exactly one of `@smoke`, `@sanity`, `@regression`, `@api`, `@e2e`, `@destructive` (`playwright-conventions.mdc` §11). Edge cases default to `@regression`. `@destructive` only when mutating shared/global state, with an `afterEach` / `afterAll` revert.
+5. Apply the `a11y-checks` skill for the programs page. Two tests, one suite tag each (`@regression`), navigation through `ProgramsPage` / `NewProgramModal` only:
+   - Axe: title prefix `programs-a11y-axe`; `new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()` inside `runA11yCheck`, asserted with `expect(results.violations).toEqual([])`. `.include()` / `.exclude()` only if a third-party widget is noisy, with a comment why.
+   - Keyboard: title prefix `programs-a11y-keyboard`; Tab to `newProgramButton`, `toBeFocused()`, Enter, dialog visible. No inline locators.
    - Report real violations (`id`, `impact`, `help`, nodes). CI stays green: attachments and `::warning`, not a failed run.
 6. Report the spec path and hand back to the parent to run. For each locator or wait you changed, one line: what it was, what it is now, and which flake class it removes. For each new edge-case test, one line: status, tag, and the live string asserted (or "renders nothing"). For each a11y test, one line: tag, and the violations reported (or "none").
 

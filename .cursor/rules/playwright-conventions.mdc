@@ -80,17 +80,42 @@ Why: logging in through the UI on every test adds a second flow that fails when 
 
 ## 5. Test data
 
-Names end with `Date.now()`. Import `test` from `fixtures/cleanup.fixture.ts` and call `trackProgram(uuid)` only after a real `POST /api/programs` returns **201** (`data.id`). The fixture deletes those ids. A `page.route` fulfillment is not a created program.
+| Kind | Where | Use |
+|------|--------|-----|
+| Happy-path values | `test-data/factories/` | Faker (or similar) with a unique suffix per call |
+| Invalid / boundary sets | `test-data/invalid/*.ts` | Curated static literals (empty, whitespace, max length) |
+| Secrets and base URLs | `process.env` | `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASSWORD` only |
+| Repeated routes / copy | `test-data/enums/` or shared enums | API paths, roles, UI strings used in multiple specs |
+
+Import `test` from `fixtures/cleanup.fixture.ts` and call `trackProgram(uuid)` only after a real `POST /api/programs` returns **201** (`data.id`). The fixture deletes those ids. A `page.route` fulfillment is not a created program.
 
 ```typescript
-// ✅ Good — tests/ds1-create-program.spec.ts
+// ✅ Good — factory + trackProgram after POST 201
 import { expect, test } from '../fixtures/cleanup.fixture';
-const programName = `Web Development 2026 ${Date.now()}`;
-await programsPage.createProgram(programName, description, trackProgram);
+import { buildProgramDraft } from '../test-data/factories/program.factory';
+import { INVALID_PROGRAM_NAMES } from '../test-data/invalid/program-names';
+
+const { name, description } = buildProgramDraft();
+await programsPage.createProgram(name, description, trackProgram);
+await modal.fill(INVALID_PROGRAM_NAMES.whitespaceOnly, description);
 
 // ❌ Bad
 const programName = 'Web Development 2026';
 test.afterAll(async () => { await page.getByRole('button', { name: 'Delete' }).click(); });
+```
+
+Example factory (`test-data/factories/program.factory.ts`):
+
+```typescript
+import { faker } from '@faker-js/faker';
+
+export function buildProgramDraft(overrides: Partial<{ name: string; description: string }> = {}) {
+  const suffix = faker.string.alphanumeric(8);
+  return {
+    name: overrides.name ?? `${faker.commerce.productName()} ${suffix}`,
+    description: overrides.description ?? faker.lorem.paragraph(),
+  };
+}
 ```
 
 Why: a shared name collides when tests run together, and a UI delete or an `afterAll` leaves the row behind when the test fails first.
@@ -213,6 +238,53 @@ await expect(programsPage.programRow('Web Development').getByText('2 hours ago')
 
 Why: extra retries hide a real bug, `workers: 1` only slows the suite, and a live clock makes "2 hours ago" depend on when CI ran.
 
+## 11. Tags
+
+Each `test(...)` carries **exactly one** Playwright tag (a single string in `{ tag: '…' }`, not on `describe`). Allowed values:
+
+| Tag | When to use |
+|-----|-------------|
+| `@smoke` | Fast critical path after deploy |
+| `@sanity` | Core happy paths for a feature area |
+| `@regression` | Broader coverage, edge cases, a11y informational checks |
+| `@api` | Primary assertion is HTTP contract / `request` / cleanup fixture behavior |
+| `@e2e` | Multi-step UI journey through real navigation |
+| `@destructive` | Mutates **shared or global** state (locale, roles, feature flags, tenant settings) — not data this test creates and deletes via `trackProgram` |
+
+Tests that only create records they clean up keep `@smoke`, `@sanity`, `@regression`, `@api`, or `@e2e` — not `@destructive`.
+
+Run slices: `npm run test:smoke`, `test:sanity`, `test:regression`, `test:api`, `test:e2e`, or `test:destructive` (last sets `--workers=1`). Filter a single file with `-g` on the title when needed.
+
+**State-mutating tests** (anything that changes shared/global state, including every `@destructive` test) must register an `test.afterEach` or `test.afterAll` hook that reverts or restores the prior state (role, locale, flag, setting). Document what was changed and how it is restored.
+
+```typescript
+// ✅ Good — one suite tag; self-cleaned program data stays @regression
+test('TC-001 — form shows required fields', { tag: '@smoke' }, async ({ page, trackProgram }) => {
+  const { name, description } = buildProgramDraft();
+  await programsPage.createProgram(name, description, trackProgram);
+});
+
+// ✅ Good — @destructive + explicit revert
+test('switches tenant locale to fr-CA', { tag: '@destructive' }, async ({ page }) => {
+  const previousLocale = await readTenantLocale(page);
+  try {
+    await setTenantLocale(page, 'fr-CA');
+    // … assertions …
+  } finally {
+    await setTenantLocale(page, previousLocale);
+  }
+});
+test.afterEach(async ({ page }) => {
+  await setTenantLocale(page, 'en-CA'); // or read from env default
+});
+
+// ❌ Bad — two tags, or @destructive for trackProgram-only data
+test('creates program', { tag: ['@smoke', '@e2e'] }, async () => {});
+test.describe('@regression', () => { /* … */ });
+```
+
+Why: one tag keeps `npm run test:*` predictable; `@destructive` serializes only what can poison other workers; revert hooks stop flaky shared state from leaking across specs.
+
 ## Do / Don't
 
 | | Do | Don't |
@@ -221,12 +293,13 @@ Why: extra retries hide a real bug, `workers: 1` only slows the suite, and a liv
 | 2 Waiting | `expect(locator).toBeVisible()` / `.toBeEnabled()` / `.toHaveText()` | `waitForTimeout`, `expect(await locator.isVisible()).toBe(true)` |
 | 3 Page Objects | One class per page or component; locators in the constructor; actions only | `expect` inside `pages/`, selectors repeated in the spec |
 | 4 Auth | `storageState` from the setup project; empty storage only for the login page | `login()` in a feature spec |
-| 5 Test data | `` `Name ${Date.now()}` `` and `trackProgram` after POST **201** | A fixed name, UI delete, or `afterAll` |
+| 5 Test data | Factories under `test-data/factories/`; invalid sets in `test-data/invalid/`; `trackProgram` after POST **201** | A fixed name, UI delete, or `afterAll` |
 | 6 API testing | `page.request` delete of ids this test created | A hardcoded Bearer token |
 | 7 Network mocking | Fulfill one programs response (500/503, empty, malformed); assert live copy | `page.route('**/*')`, invented error text, mocking `/api/auth/*` |
 | 8 Accessibility | Axe `wcag2a` + `wcag2aa`; Tab to the control, then Enter | `.focus()`, `.disableRules()` to force green |
 | 9 Assertions | Web-first `expect` in the spec | A snapshot boolean; a screenshot that is not the point of the test |
 | 10 Anti-flake | CI retries 2, local 0; `en-CA` / `America/Toronto`; `page.clock` for relative time | `retries` above 2, `workers: 1`, the wall clock |
+| 11 Tags | Exactly one of `@smoke` … `@destructive` on each `test()`; revert hook on shared-state changes | Tags on `describe`, multiple tags, `@destructive` for self-cleaned data |
 
 ## Refusals (hard stops)
 

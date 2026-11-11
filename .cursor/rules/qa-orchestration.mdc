@@ -13,6 +13,7 @@ During **analyze**, run live UI recon per jira-ticket-to-gherkin step 2 when cre
 
 - **jira-ticket-to-gherkin** — a DS ticket into `features/<key>.feature`. Use this when a ticket exists.
 - **explore-and-generate** — no ticket. One highest-value uncovered flow into `features/explore-<area>-<flow>.feature`. Do not use it when a ticket already exists.
+- **exploratory-charter** — a feature plus a risk into a session charter and an empty findings template. The thinking is human; the skill just keeps the format. No crawl, no Gherkin, no spec.
 - **self-heal** — after triage classifies locator drift (test issue): re-discover via Agent-Browser, patch the POM, prove green with assertions unchanged, open a repair PR. Never for a real app bug.
 
 ## Live app tooling
@@ -32,6 +33,7 @@ Record which tool you used. Login: `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASS
 | **triage** | When trace/artifacts are missing, stale, or classification is unclear |
 | **self-heal** | After triage says drift: Agent-Browser a11y snapshot to re-discover the locator before patching the POM |
 | **bug-reporter** | No live crawl — works from triage output only |
+| **exploratory-charter** | No live crawl — format only |
 
 `npx playwright test` remains the gate after specs exist; the tools above complement it for exploration and diagnosis.
 
@@ -45,6 +47,7 @@ If you touch `playwright.config.ts`, keep `fullyParallel: true`, `retries: proce
 |-------|--------|
 | Ticket given | Analyze (Jira + UI recon) → produce a test plan (`features/<key>.feature`) |
 | No ticket / "find what we're not testing" / "explore for untested flows" / "expand coverage" | **explore-and-generate** → one feature file, then the plan-ready path |
+| Exploratory charter / session charter / "charter this feature against this risk" | **exploratory-charter** — charter plus empty findings. Stop there |
 | Plan ready | Delegate to **test-writer** subagent |
 | Spec returned | Run `npx playwright test` (target the new/changed spec when possible) |
 | Run is red | Delegate to **triage**, then **Heal on red** |

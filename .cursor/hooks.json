@@ -6,6 +6,27 @@
         "command": ".cursor/hooks/assertion-guard.sh",
         "matcher": "Write",
         "failClosed": true
+      },
+      {
+        "command": ".cursor/hooks/constitution-guard.sh",
+        "matcher": "Write",
+        "failClosed": true
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/eval-ask-guess.sh",
+        "matcher": "AskQuestion|Write"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/refresh-eval-report.sh"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": ".cursor/hooks/refresh-eval-report.sh"
       }
     ]
   }

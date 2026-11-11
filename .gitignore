@@ -13,3 +13,6 @@ mcp.log
 mcp.json
 playwright-mcp.sh
 manual/delete-programs.spec.ts
+
+# Eval scratch (eval-report.md is tracked)
+.eval/last-report.json

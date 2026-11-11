@@ -1,0 +1,85 @@
+---
+description: Playwright project constitution — non-negotiables read every session
+alwaysApply: true
+---
+
+# Constitution
+
+Details live in `playwright-conventions.mdc` and `qa-orchestration.mdc`; this card is the floor.
+
+## MUST
+
+| Rule | In practice |
+|------|-------------|
+| Role-based locators | POM: `getByRole` → label/placeholder → text → `getByTestId`; disambiguate with `.filter({ hasText })` |
+| Web-first assertions | `expect(locator).toBeVisible()` (etc.); not `isVisible()` snapshots or fixed sleeps |
+| `storageState` auth | Setup project + shared session; no per-spec login unless the scenario requires it |
+| Unique self-cleaning data | Faker (or similar) per run; delete or route-mock what you create — see `api-cleanup` |
+| One tag per test | Exactly one of `@smoke`, `@sanity`, `@regression`, `@api`, `@e2e`, `@destructive` on each `test(...)`, not on `describe` |
+
+## SHOULD
+
+| Rule | In practice |
+|------|-------------|
+| Faker factories | Shared helpers for names, emails, program titles — avoid copy-pasted literals |
+| Enums for repeated strings | Roles, routes, API paths, copy used in multiple files |
+| JSDoc on action methods | Page-object actions: what they do and any preconditions |
+
+## WON'T
+
+| Rule | Why |
+|------|-----|
+| XPath or brittle CSS | Breaks on restyle; use accessibility tree |
+| `waitForTimeout` | Flaky; assert what the user sees |
+| Hardcoded secrets | `DIDAXIS_*` from `.env` / CI only |
+| `any` | Type failures and prod data at compile time |
+| Weakened assertions | Green by lowering the bar is not a fix |
+| Heal a real app bug | Triage → Jira; `self-heal` is locator drift only |
+| Tags on `describe` | Reporting and filtering are per-test |
+
+## Agent governance
+
+Behavioral contract for the coordinator and subagents. Not enforced by hooks or CI — follow it in every session.
+
+### Audit-then-edit
+
+1. **Audit** — read ticket, rules, repo, and (when needed) the live app before changing anything.
+2. **Propose** — for every non-trivial task, emit a **Proposal** block *before* edits (trivial = typos, one-line fixes with obvious intent, or explicit “just do X” with no ambiguity).
+3. **Edit** — implement only after the confidence gate allows it.
+
+### Proposal block (required shape)
+
+```text
+## Proposal
+- **Scope:** …
+- **Confidence:** N/10
+- **Rationale:** …
+- **Unknowns:** … (or “none”)
+```
+
+### Confidence gate
+
+| Confidence | Action |
+|------------|--------|
+| **&lt; 5** | Do **not** proceed. Ask for the missing input or run exploration (read repo, Jira, UI recon) until confidence rises or the human narrows scope. |
+| **5–7** | Proceed only if **Unknowns** are listed explicitly and the human approves (reply OK, approve plan, or equivalent). |
+| **≥ 8** | Proceed with implementation per routing (`qa-orchestration.mdc`). |
+
+Subagents should follow the same gate when their task is non-trivial; the coordinator emits the Proposal when it owns the work.
+
+### No invention
+
+Never guess or fabricate:
+
+- file paths, module names, or APIs not verified in repo or docs
+- enums, constants, or copy not seen in code, ticket, or live UI
+- env vars, credentials, URLs, or Jira/Confluence IDs
+- user-facing messages, error strings, or AC not grounded in ticket or app
+
+**Instead:** search the codebase, use MCP/skills, ask the human, or explore the app — then update **Unknowns** and **Confidence**.
+
+## Index
+
+**Skills:** `a11y-checks` · `api-cleanup` · `ci-failure-triage` · `explore-and-generate` · `exploratory-charter` · `jira-bug-reporter` · `jira-ticket-to-gherkin` · `pom-conventions` · `self-heal`
+
+**Agents:** `test-writer` (plan → spec) · `triage` (classify red runs) · `bug-reporter` (Jira from confirmed defect)
