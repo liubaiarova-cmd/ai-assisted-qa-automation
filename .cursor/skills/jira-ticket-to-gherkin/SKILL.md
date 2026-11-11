@@ -50,18 +50,19 @@ not only ticket text.
      the extra save and list statuses). `Then` quotes only error or
      empty-state copy read on the live page during recon. If that case
      renders nothing, the `Then` step says the app renders nothing. Do not
-     invent the string. Note the single tag (`@programs-save-<status>`,
-     `@programs-list-<status>`, `@programs-list-empty`, or
-     `@programs-list-malformed`). The scenario mocks only the call whose UI
-     reaction it checks, never the request it is verifying.
+     invent the string. Note the Playwright suite tag `@regression` (or
+     `@smoke` when it is a critical path). Scenario title should include
+     `programs-save-<status>` / `programs-list-*` for `-g` filtering. The
+     scenario mocks only the call whose UI reaction it checks, never the
+     request it is verifying.
    - When the ticket touches the programs page, add two `# Accessibility`
-     scenarios, one tag each. Axe: `withTags(['wcag2a', 'wcag2aa'])`,
+     scenarios, one suite tag each (`@regression`). Axe: `withTags(['wcag2a', 'wcag2aa'])`,
      `expect(results.violations).toEqual([])`, and the `Then` step lists
      real violation `id`, `impact`, and `help` from a live scan, or "none".
      `.include()` / `.exclude()` only for a noisy third-party widget, with
      a comment why. Keyboard: Tab to the primary control, it is focused,
      Enter opens the dialog. Steps use POM actions, not inline locators.
-     Tags: `@programs-a11y-axe` and `@programs-a11y-keyboard`. Note that
+     Title prefixes: `programs-a11y-axe` and `programs-a11y-keyboard`. Note that
      these checks are informational in CI and must not turn the build red.
 
 4. Write each scenario in Given / When / Then form. `Given` sets the

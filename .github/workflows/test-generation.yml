@@ -37,24 +37,40 @@ jobs:
           curl https://cursor.com/install -fsS | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Verify Jira API credentials
-        env:
-          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
-          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
-        run: |
-          code="$(curl -s -o /dev/null -w '%{http_code}' \
-            -u "${ATLASSIAN_EMAIL}:${ATLASSIAN_API_TOKEN}" \
-            "https://legionqaschool.atlassian.net/rest/api/3/myself")"
-          if [ "$code" != "200" ]; then
-            echo "::error::Jira REST auth failed (HTTP ${code}). Use ATLASSIAN_EMAIL + API token, not account password."
-            exit 1
-          fi
-
       - name: Record baseline ref
         id: baseline
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # Ticket work is optional. A Jira error or an empty queue must not skip
+      # the suite and self-heal steps below.
+      - name: Count In Progress tickets without tests
+        id: queue
+        env:
+          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          jql='project = DS AND status = "In Progress" AND (labels is EMPTY OR labels != "tests-generated") ORDER BY key ASC'
+          payload=$(jq -n --arg jql "$jql" '{jql:$jql, maxResults:1, fields:["key"]}')
+          tmp=$(mktemp)
+          code=$(curl -sS -o "$tmp" -w '%{http_code}' \
+            -u "${ATLASSIAN_EMAIL}:${ATLASSIAN_API_TOKEN}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "https://legionqaschool.atlassian.net/rest/api/3/search/jql")
+          if [ "$code" != "200" ]; then
+            echo "::warning::Jira search failed (HTTP ${code}). Skipping ticket work. The suite and self-heal still run."
+            cat "$tmp" || true
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          count=$(jq -r '(.issues // []) | length' "$tmp")
+          echo "Ready tickets in the first page probe: ${count}"
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+
       - name: Work the In Progress backlog
+        if: ${{ !cancelled() && steps.queue.outputs.count != '' && steps.queue.outputs.count != '0' }}
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
@@ -66,7 +82,7 @@ jobs:
 
           Work DS tickets in status "In Progress" that do not have the tests-generated label. Take at most 5 tickets, lowest key first.
 
-          If that query returns no tickets, print that the queue is empty and exit 0. An empty queue is a normal outcome. Do not fail this step. Do not invent a ticket. Do not run the Playwright suite. The following Actions steps run the suite and self-heal on this same commit.
+          This step runs only when the workflow already found at least one ready ticket. If the queue is empty anyway, print that and exit 0. Do not invent a ticket. Do not run the Playwright suite. An empty queue is handled before this step: the following Actions steps still run the suite and self-heal on this same commit.
 
           For each ticket:
           1. Analyze the ticket, including live UI recon when DIDAXIS_EMAIL and DIDAXIS_PASSWORD are set.
@@ -82,6 +98,7 @@ jobs:
           EOF
           )"
 
+      # These steps run whether or not any Jira ticket was ready.
       - name: Reset to baseline for self-heal
         if: ${{ !cancelled() && steps.baseline.outputs.sha != '' }}
         run: |
@@ -107,7 +124,7 @@ jobs:
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           agent -p --force --trust --output-format text "$(cat <<'EOF'
-          Self-heal mode. The In Progress queue may have been empty. That does not skip this step. Do not query Jira for work, and do not create or transition tickets.
+          Self-heal mode. Run this even when no Jira ticket was ready. Do not query Jira for work, and do not create or transition tickets. An empty backlog is not a reason to skip triage or healing.
 
           The suite already ran in this job. Read suite-run.log and playwright-report/. Do not run `npx playwright test` with no file filter. A full suite inside the agent is killed with SIGTERM.
 
@@ -119,9 +136,8 @@ jobs:
           4. Open one unmerged repair PR per heal, from this baseline commit. Name the POM property, the old locator, the new locator, the green command, and link $GITHUB_RUN_URL. Do not merge.
           5. Leave product defects, env failures, and flakes unhealed. Report them in the summary. Do not file a Jira bug.
           6. Never re-run the same failing spec more than twice.
-          7. Do self-healing even if there are no Jira tickets ready to work on.
 
-          Exit 0 after the log has been triaged, including when nothing was drift or the heal budget is spent. Exit non-zero only when suite-run.log cannot be read.
+          Exit 0 after the log has been triaged, including when nothing was drift, the heal budget is spent, or the Jira queue was empty. Exit non-zero only when suite-run.log cannot be read.
 
           The workspace is the workflow baseline, not a ticket branch. Use GITHUB_TOKEN for git and pull requests. Didaxis credentials are already in the environment.
           EOF
@@ -135,4 +151,20 @@ jobs:
             playwright-report/
             suite-run.log
           retention-days: 7
+          if-no-files-found: warn
+
+      - name: Generate eval report
+        if: ${{ !cancelled() }}
+        env:
+          EVAL_TRIGGER: test-generation
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          EVAL_CI_RUNS_N: 10
+        run: node scripts/generate-eval-report.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: eval-report
+          path: eval-report.md
+          retention-days: 30
           if-no-files-found: warn

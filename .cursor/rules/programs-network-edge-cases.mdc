@@ -12,7 +12,7 @@ Never mock the call the test is actually verifying. A test that checks a real cr
 
 Register the route before the action that sends the request. UI actions go through `ProgramsPage`, `NewProgramModal`, and `LoginPage` only. `page.route` / `page.unroute` stay in the spec. Success helpers wait for **201** or a closed dialog (`createProgram`, `submitCreate`) — do not use them for a non-success fulfillment. Use `attemptCreate` or `clickCreate(track, { required: false })` for a failed create, and `clickSave` for a failed update. If `goto()` waits for a table or empty state the error screen never shows, propose a POM change; do not replace it with raw locators or `page.goto`.
 
-One Playwright tag per test, a single string: `@programs-save-<status>`, `@programs-list-<status>`, `@programs-list-empty`, or `@programs-list-malformed`. Not an array.
+One Playwright suite tag per test (see `playwright-conventions.mdc` §11): use `@regression` for network edge cases unless the scenario is a short critical path (`@smoke` / `@sanity`). Not an array. Name tests so `-g "programs-save-503"` can filter a single status.
 
 Before any assertion, open the real programs page (Playwright MCP → `agent-browser` → Playwright CLI) and read the error and empty-state copy the app renders. Assert that text. If a case renders nothing, say so and assert the shell stayed up (no crash, programs URL still loaded). Do not invent strings. Do not reuse another status's copy.
 
@@ -29,7 +29,7 @@ Each row is its own test. List body the app expects is JSON `{ "data": [ ... ] }
 | `GET` list | **401, 403, 404, 501, 502, 503, 300, 204, 400, 500, 504, 408** | What the page actually shows (error, redirect, empty, or nothing). A failed list must not be asserted as the empty state unless recon showed that |
 
 ```typescript
-test('save surfaces the unavailable error', { tag: '@programs-save-503' }, async ({ page, trackProgram }) => {
+test('programs-save-503 surfaces the unavailable error', { tag: '@regression' }, async ({ page, trackProgram }) => {
   const programsPage = new ProgramsPage(page);
   await programsPage.goto();
   await programsPage.openNewProgramForm();

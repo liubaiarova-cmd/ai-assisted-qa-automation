@@ -5,7 +5,7 @@ description: Adds or verifies @axe-core/playwright accessibility scans and keybo
 
 # Accessibility checks (Axe + Playwright)
 
-**Mandatory** for the programs page, and for any new page, route, modal, drawer, or reusable UI component. Two tests. One tag string per test. Do not skip because the user did not ask.
+**Mandatory** for the programs page, and for any new page, route, modal, drawer, or reusable UI component. Two tests. One suite tag per test (`@regression` unless documented as `@smoke`). See `playwright-conventions.mdc` §11. Do not skip because the user did not ask.
 
 Navigation, focus, and the dialog go through the existing POMs (`ProgramsPage`, `NewProgramModal`). No inline locators in the spec — no `getByRole`, `getByLabel`, `getByText`, CSS, or XPath there. Role-based locators stay on the POM.
 
@@ -34,7 +34,7 @@ Axe does not cover this. Tab to the primary control (`programsPage.newProgramBut
 Press `Tab` until that POM locator is focused. Do not call `.focus()` — that skips tab order. Cap the tabs; a control that never focuses fails the assertion.
 
 ```typescript
-test('keyboard opens the new-program dialog', { tag: '@programs-a11y-keyboard' }, async ({ page }) => {
+test('programs-a11y-keyboard opens the new-program dialog', { tag: '@regression' }, async ({ page }) => {
   const programsPage = new ProgramsPage(page);
   await programsPage.goto();
   for (let i = 0; i < 15; i += 1) {
@@ -51,7 +51,7 @@ In CI, a keyboard miss is reported the same way as an axe finding: attach the er
 
 ## Other screens
 
-Same two tests: `.withTags(['wcag2a', 'wcag2aa'])`, POM only, one tag each (`@<screen>-a11y-axe`, `@<screen>-a11y-keyboard`), CI stays green, real violations are reported.
+Same two tests: `.withTags(['wcag2a', 'wcag2aa'])`, POM only, one suite tag each (`@regression`; title prefix `<screen>-a11y-axe` / `<screen>-a11y-keyboard`), CI stays green, real violations are reported.
 
 ## Review checklist
 
