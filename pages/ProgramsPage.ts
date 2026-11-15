@@ -10,7 +10,7 @@ export class ProgramsPage {
   readonly modal: NewProgramModal;
 
   constructor(private readonly page: Page) {
-    this.newProgramButton = page.getByRole('button', { name: '+ New Programmesos' });
+    this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
     this.createFirstProgramButton = page.getByRole('button', { name: 'Create Prog' });
     this.emptyStateMessage = page.getByText(emptyProgramsMessage);
     this.duplicateError = page.getByText(/already|duplicate|exists|in use/i);
